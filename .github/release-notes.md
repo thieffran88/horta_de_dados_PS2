@@ -15,7 +15,7 @@ Português, English e Español.
 - Regras completas: plantio por adjacência, porco e seus poderes, mercado, modos básico e avançado.
 - Jogadores CPU (Fácil e Normal) e até 4 pessoas no mesmo controle.
 - HUD com arte própria, abertura em tela cheia, ícones dos botões e dados animados.
-- Música e efeitos sonoros com tema de fazendinha.
+- Música e efeitos sonoros com tema de fazendinha (v1.0.1: corrigido o áudio que tocava acelerado).
 
 > Compilado automaticamente pelo GitHub Actions a partir do código desta tag.
 > Ainda não foi testado em um PS2 real: se encontrar algum problema, abra uma issue.

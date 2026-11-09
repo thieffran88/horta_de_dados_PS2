@@ -16,6 +16,15 @@ static int music = -1, music_pos, music_next = -1, music_gain = 256, fading;
 static unsigned age;
 static unsigned voice_age[MAX_VOICES];
 
+static void ensure_init(void)
+{
+    static int init;
+    int i;
+    if (init) return;
+    for (i = 0; i < MAX_VOICES; i++) voices[i].snd = -1;
+    init = 1;
+}
+
 static int sample_at(int snd, int pos)
 {
     const SoundInfo *s = &SOUNDS[snd];
@@ -42,6 +51,7 @@ void audio_music(int snd)
 void audio_sfx(int snd)
 {
     int i, best = 0;
+    ensure_init();
     if (snd < 0 || snd >= NUM_SOUNDS) return;
     for (i = 0; i < MAX_VOICES; i++) {
         if (voices[i].snd < 0) { best = i; break; }
@@ -54,12 +64,8 @@ void audio_sfx(int snd)
 
 void audio_mix(short *out, int n)
 {
-    static int init;
     int i, k;
-    if (!init) {
-        for (i = 0; i < MAX_VOICES; i++) voices[i].snd = -1;
-        init = 1;
-    }
+    ensure_init();
     for (k = 0; k < n; k++) {
         int acc = 0;
         if (music >= 0) {
@@ -88,5 +94,37 @@ void audio_mix(short *out, int n)
                 fading = 0;
             }
         }
+    }
+}
+
+/* ---------------- alimentacao do driver ----------------
+ * O audsrv guarda as amostras num anel; a leitura avanca sempre no ritmo do SPU2.
+ * Regras: (1) nunca descartar amostras ja mixadas (o driver aceita menos que o pedido
+ * quando falta espaco); (2) deixar sempre alguns bytes livres, porque com o anel 100%
+ * cheio a posicao de escrita encosta na de leitura e o driver passa a ve-lo como vazio. */
+#define FEED_CHUNK 256      /* amostras mixadas por vez */
+#define FEED_GUARD 8        /* bytes que ficam sempre livres no anel */
+
+void audio_feed(audio_avail_fn available, audio_play_fn play)
+{
+    static short buf[FEED_CHUNK];
+    static int pend_off, pend_len; /* bytes ainda nao aceitos de buf */
+    int guard = 0;
+    while (guard++ < 64) {
+        int free_bytes, n, sent;
+        if (pend_len == 0) {
+            audio_mix(buf, FEED_CHUNK);
+            pend_off = 0;
+            pend_len = FEED_CHUNK * 2;
+        }
+        free_bytes = available() - FEED_GUARD;
+        if (free_bytes < 2) break;
+        n = pend_len < free_bytes ? pend_len : free_bytes;
+        n &= ~1; /* amostras inteiras de 16 bits */
+        sent = play((const char *)buf + pend_off, n);
+        if (sent <= 0) break;
+        sent &= ~1;
+        pend_off += sent;
+        pend_len -= sent;
     }
 }

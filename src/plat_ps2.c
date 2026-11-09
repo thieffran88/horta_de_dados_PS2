@@ -115,8 +115,6 @@ static void load_modules(void)
 extern unsigned char irx_audsrv[], irx_audsrv_end[];
 extern unsigned char irx_libsd[], irx_libsd_end[];
 static int audio_ok;
-#define AUDIO_CHUNK 512            /* amostras por envio */
-#define AUDIO_TARGET (2048 * 2)    /* bytes na fila (~93 ms a 22050 Hz mono) */
 
 static void audio_init(void)
 {
@@ -134,15 +132,12 @@ static void audio_init(void)
     audio_ok = 1;
 }
 
+static int ps2_audio_available(void) { return audsrv_available(); }
+static int ps2_audio_play(const char *buf, int bytes) { return audsrv_play_audio(buf, bytes); }
+
 static void audio_update(void)
 {
-    static short buf[AUDIO_CHUNK] __attribute__((aligned(64)));
-    int guard = 0;
-    if (!audio_ok) return;
-    while (audsrv_queued() < AUDIO_TARGET && guard++ < 8) {
-        audio_mix(buf, AUDIO_CHUNK);
-        audsrv_play_audio((const char *)buf, AUDIO_CHUNK * 2);
-    }
+    if (audio_ok) audio_feed(ps2_audio_available, ps2_audio_play);
 }
 
 static void open_pads(void)

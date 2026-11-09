@@ -6,7 +6,7 @@ CFLAGS ?= -O2 -g -Wall -Wextra -Wno-unused-parameter -std=c99
 CORE = src/game.c src/ai.c src/gfx.c src/ui.c src/lang.c src/audio.c src/font_data.c src/assets.S
 OUT = build-host
 
-all: $(OUT)/horta_host $(OUT)/test_rules
+all: $(OUT)/horta_host $(OUT)/test_rules $(OUT)/test_audio
 
 $(OUT)/horta_host: $(CORE) host/plat_host.c host/main_host.c src/*.h assets/*.bin
 	@mkdir -p $(OUT)
@@ -16,8 +16,13 @@ $(OUT)/test_rules: src/game.c tests/test_rules.c src/game.h
 	@mkdir -p $(OUT)
 	$(CC) $(CFLAGS) -o $@ src/game.c tests/test_rules.c
 
+$(OUT)/test_audio: src/audio.c tests/test_audio.c src/assets.S src/audio.h src/sounds.h assets/audio.bin
+	@mkdir -p $(OUT)
+	$(CC) $(CFLAGS) -o $@ src/audio.c src/assets.S tests/test_audio.c
+
 test: all
 	$(OUT)/test_rules
+	$(OUT)/test_audio
 	$(OUT)/horta_host sim 300
 
 shots: $(OUT)/horta_host
