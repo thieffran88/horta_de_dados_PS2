@@ -1,0 +1,43 @@
+name: Build
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  ps2:
+    name: ELF e ISO do PS2
+    runs-on: ubuntu-latest
+    container: ps2dev/ps2dev:latest
+    steps:
+      - name: Ferramentas
+        run: apk add --no-cache make cdrkit git
+      - uses: actions/checkout@v4
+      - name: Compilar ELF
+        run: make
+      - name: Gerar ISO
+        run: make iso MKISOFS=genisoimage
+      - uses: actions/upload-artifact@v4
+        with:
+          name: horta-de-dados-ps2
+          path: |
+            horta_de_dados.elf
+            horta_de_dados.iso
+
+  testes:
+    name: Testes de regras (PC)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Testes
+        run: make -f Makefile.host test
+      - name: Capturas de tela
+        run: |
+          make -f Makefile.host shots
+          python3 -m pip install --quiet pillow
+          python3 -c "import glob; from PIL import Image; [Image.open(f).save(f[:-4]+'.png') for f in glob.glob('build-host/shots/*.ppm')]"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: capturas
+          path: build-host/shots/*.png

@@ -1,0 +1,30 @@
+# Build de testes no PC (nao gera o jogo de PS2).
+#   make -f Makefile.host test     -> testes de regras + 300 partidas simuladas
+#   make -f Makefile.host shots    -> capturas de tela em build-host/shots
+CC ?= cc
+CFLAGS ?= -O2 -g -Wall -Wextra -Wno-unused-parameter -std=c99
+CORE = src/game.c src/ai.c src/gfx.c src/ui.c src/font_data.c
+OUT = build-host
+
+all: $(OUT)/horta_host $(OUT)/test_rules
+
+$(OUT)/horta_host: $(CORE) host/plat_host.c host/main_host.c src/*.h
+	@mkdir -p $(OUT)
+	$(CC) $(CFLAGS) -o $@ $(CORE) host/plat_host.c host/main_host.c -lm
+
+$(OUT)/test_rules: src/game.c tests/test_rules.c src/game.h
+	@mkdir -p $(OUT)
+	$(CC) $(CFLAGS) -o $@ src/game.c tests/test_rules.c
+
+test: all
+	$(OUT)/test_rules
+	$(OUT)/horta_host sim 300
+
+shots: $(OUT)/horta_host
+	@mkdir -p $(OUT)/shots
+	$(OUT)/horta_host shots $(OUT)/shots
+
+clean:
+	rm -rf $(OUT)
+
+.PHONY: all test shots clean

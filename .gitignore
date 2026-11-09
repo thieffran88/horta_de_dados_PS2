@@ -1,0 +1,6 @@
+build-host/
+build-ps2/
+iso_root/
+*.o
+*.elf
+*.iso
