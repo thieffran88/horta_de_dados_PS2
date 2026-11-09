@@ -11,7 +11,9 @@
 #include <timer.h>
 #include <gsKit.h>
 #include <dmaKit.h>
+#include <audsrv.h>
 #include "plat.h"
+#include "audio.h"
 
 extern const unsigned char font_small_pixels[];
 
@@ -107,6 +109,42 @@ static void load_modules(void)
     SifLoadModule("rom0:PADMAN", 0, NULL);
 }
 
+/* ---------------- audio ----------------
+ * libsd (driver do SPU2) vem da ROM; se faltar, usa a copia embutida. O audsrv.irx do
+ * PS2SDK vai embutido no ELF. O mixer roda no EE e enche o buffer do audsrv a cada quadro. */
+extern unsigned char irx_audsrv[], irx_audsrv_end[];
+extern unsigned char irx_libsd[], irx_libsd_end[];
+static int audio_ok;
+#define AUDIO_CHUNK 512            /* amostras por envio */
+#define AUDIO_TARGET (2048 * 2)    /* bytes na fila (~93 ms a 22050 Hz mono) */
+
+static void audio_init(void)
+{
+    int ret = 0;
+    struct audsrv_fmt_t fmt;
+    if (SifLoadModule("rom0:LIBSD", 0, NULL) < 0)
+        SifExecModuleBuffer(irx_libsd, (u32)(irx_libsd_end - irx_libsd), 0, NULL, &ret);
+    if (SifExecModuleBuffer(irx_audsrv, (u32)(irx_audsrv_end - irx_audsrv), 0, NULL, &ret) < 0) return;
+    if (audsrv_init() != 0) return;
+    fmt.bits = 16;
+    fmt.freq = AUDIO_RATE;
+    fmt.channels = 1;
+    if (audsrv_set_format(&fmt) != 0) return;
+    audsrv_set_volume(MAX_VOLUME);
+    audio_ok = 1;
+}
+
+static void audio_update(void)
+{
+    static short buf[AUDIO_CHUNK] __attribute__((aligned(64)));
+    int guard = 0;
+    if (!audio_ok) return;
+    while (audsrv_queued() < AUDIO_TARGET && guard++ < 8) {
+        audio_mix(buf, AUDIO_CHUNK);
+        audsrv_play_audio((const char *)buf, AUDIO_CHUNK * 2);
+    }
+}
+
 static void open_pads(void)
 {
     int port;
@@ -164,6 +202,7 @@ int plat_init(void)
 {
     load_modules();
     open_pads();
+    audio_init();
 
     dmaKit_init(D_CTRL_RELE_OFF, D_CTRL_MFD_OFF, D_CTRL_STS_UNSPEC,
                 D_CTRL_STD_OFF, D_CTRL_RCYC_8, 1 << DMA_CHANNEL_GIF);
@@ -203,6 +242,7 @@ void plat_frame_begin(Color clear)
 
 void plat_frame_end(void)
 {
+    audio_update();
     gsKit_queue_exec(gs);
     gsKit_sync_flip(gs);
     gsKit_TexManager_nextFrame(gs);

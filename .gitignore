@@ -5,3 +5,4 @@ iso_root/
 *.elf
 *.iso
 assets/preview_*.png
+build-audio/

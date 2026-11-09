@@ -5,6 +5,7 @@
 #include "ai.h"
 #include "gfx.h"
 #include "lang.h"
+#include "audio.h"
 
 #define DIRS (BTN_UP | BTN_DOWN | BTN_LEFT | BTN_RIGHT)
 
@@ -35,6 +36,7 @@ static void set_msg(Ui *u, Color c, const char *s)
     snprintf(u->msg, sizeof(u->msg), "%s", s);
     u->msg_color = c;
     u->msg_timer = 150;
+    if (c == COL_BAD) audio_sfx(SFX_ERROR);
 }
 
 static int is_cpu(const Ui *u, int i) { return u->g.p[i].is_cpu; }
@@ -119,6 +121,7 @@ static void begin_turn(Ui *u)
         u->state = ST_PICK;
         /* Com mais de um humano, avisa de quem e a vez (passa o controle). */
         u->banner_timer = humans(u) > 1 ? 90 : 45;
+        audio_sfx(SFX_CLUCK);
     }
 }
 
@@ -129,11 +132,26 @@ static void do_move(Ui *u, const Move *m)
     int was_last = u->g.last_round;
     Player *p = &u->g.p[who];
     int rows_before = pig_rows_done(p);
+    int r, c, full_before = 0, full_after = 0;
+    for (r = 0; r < GARDEN_ROWS; r++) {
+        int f = 1;
+        for (c = 0; c < GARDEN_COLS; c++) if (!p->garden[r][c]) f = 0;
+        full_before += f;
+    }
 
     if (!game_apply(&u->g, m)) {
         set_msg(u, COL_BAD, T(S_INVALID));
         return;
     }
+    for (r = 0; r < GARDEN_ROWS; r++) {
+        int f = 1;
+        for (c = 0; c < GARDEN_COLS; c++) if (!p->garden[r][c]) f = 0;
+        full_after += f;
+    }
+    audio_sfx(m->feed_pig ? SFX_OINK : SFX_PLANT);
+    if (pig_rows_done(p) > rows_before) audio_sfx(SFX_POWER);
+    if (full_after > full_before) audio_sfx(SFX_RIBBON);
+    if (!was_last && u->g.last_round) audio_sfx(SFX_MOO);
     if (m->feed_pig)
         snprintf(b, sizeof(b), T(pig_rows_done(p) > rows_before ? S_FED_POWER : S_FED), p->name, m->new_value);
     else
@@ -250,13 +268,15 @@ static void upd_roll(Ui *u)
         u->timer++;
         if ((cpu && u->timer > 50) || (!cpu && (u->pressed & BTN_CROSS))) {
             game_roll(g);
+            audio_sfx(SFX_ROLL);
             u->timer = 0;
             u->pick_sel = 0;
         }
         if (!cpu && (u->pressed & BTN_START)) enter_pause(u);
         return;
     }
-    if (++u->timer >= ROLL_FRAMES) begin_turn(u); /* animacao da rolagem */
+    if (++u->timer == ROLL_LAND(g->pool_n - 1)) audio_sfx(SFX_LAND);
+    if (u->timer >= ROLL_FRAMES) begin_turn(u); /* animacao da rolagem */
 }
 
 static void upd_pick(Ui *u)
@@ -405,7 +425,73 @@ static void upd_pause(Ui *u)
     }
 }
 
+/* Sons de interface: compara o estado antes/depois de cada quadro. */
+typedef struct {
+    int state, menu, lang, setup, pause, page, pick, row, view, players, adv, value, color, sel, pool, types;
+} UiSnap;
+
+static void snap(const Ui *u, UiSnap *s)
+{
+    s->state = u->state; s->menu = u->menu_sel; s->lang = u->lang_sel; s->setup = u->setup_sel;
+    s->pause = u->pause_sel; s->page = u->rules_page; s->pick = u->pick_sel; s->row = u->place_row;
+    s->view = u->view_player; s->players = u->setup_players; s->adv = u->setup_adv;
+    s->value = u->adj_value; s->color = u->adj_color; s->sel = u->sel_active; s->pool = u->g.pool_n;
+    s->types = u->setup_type[0] | (u->setup_type[1] << 2) | (u->setup_type[2] << 4) | (u->setup_type[3] << 6);
+}
+
+static void ui_sounds(const Ui *u, const UiSnap *a, const UiSnap *b)
+{
+    if (a->state != b->state) {
+        int from = a->state, to = b->state;
+        if (b->pool != a->pool && to != ST_MARKET) return; /* jogada: o som ja saiu em do_move */
+        if (to == ST_MARKET) audio_sfx(SFX_MARKET);
+        else if (to == ST_GAMEOVER) audio_sfx(SFX_WIN);
+        else if (from == ST_SPLASH) audio_sfx(SFX_ROOSTER);
+        else if (from == ST_SETUP && to == ST_ROLL) audio_sfx(SFX_ROOSTER);
+        else if (to == ST_ROLL || to == ST_CPU || from == ST_ROLL || from == ST_MARKET || from == ST_CPU) return;
+        else if ((from == ST_PLACE && to == ST_PICK) || (from == ST_SETUP && to == ST_TITLE) ||
+                 from == ST_PAUSE || from == ST_RULES) audio_sfx(SFX_BACK);
+        else audio_sfx(SFX_SELECT);
+        return;
+    }
+    if (b->sel && a->sel && (a->value != b->value || a->color != b->color)) { audio_sfx(SFX_POWER_USE); return; }
+    if (a->menu != b->menu || a->lang != b->lang || a->setup != b->setup || a->pause != b->pause ||
+        a->page != b->page || (a->pick != b->pick && u->state == ST_PICK) || a->row != b->row ||
+        a->view != b->view || a->players != b->players || a->adv != b->adv || a->types != b->types)
+        audio_sfx(SFX_TICK);
+}
+
+/* Musica de cada tela: fazendinha animada nos menus, tema calmo durante a partida. */
+static void ui_music(const Ui *u)
+{
+    switch (u->state) {
+    case ST_ROLL: case ST_PICK: case ST_PLACE: case ST_CPU: case ST_MARKET: case ST_PAUSE:
+        audio_music(MUS_GAME);
+        break;
+    case ST_RULES:
+        if (u->prev_state != ST_PAUSE) audio_music(MUS_TITLE);
+        break;
+    case ST_GAMEOVER:
+        audio_music(u->timer > 240 ? MUS_TITLE : -1); /* silencio para a fanfarra */
+        break;
+    default:
+        audio_music(MUS_TITLE);
+    }
+}
+
+static void ui_update_inner(Ui *u, unsigned b);
+
 void ui_update(Ui *u, unsigned b)
+{
+    UiSnap before, after;
+    snap(u, &before);
+    ui_update_inner(u, b);
+    snap(u, &after);
+    ui_sounds(u, &before, &after);
+    ui_music(u);
+}
+
+static void ui_update_inner(Ui *u, unsigned b)
 {
     u->frame++;
     u->pressed = b & ~u->held;

@@ -3,7 +3,7 @@
 #   make -f Makefile.host shots    -> capturas de tela em build-host/shots
 CC ?= cc
 CFLAGS ?= -O2 -g -Wall -Wextra -Wno-unused-parameter -std=c99
-CORE = src/game.c src/ai.c src/gfx.c src/ui.c src/lang.c src/font_data.c src/assets.S
+CORE = src/game.c src/ai.c src/gfx.c src/ui.c src/lang.c src/audio.c src/font_data.c src/assets.S
 OUT = build-host
 
 all: $(OUT)/horta_host $(OUT)/test_rules

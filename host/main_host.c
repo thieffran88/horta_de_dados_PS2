@@ -8,6 +8,7 @@
 #include "../src/ui.h"
 #include "../src/ai.h"
 #include "../src/gfx.h"
+#include "../src/audio.h"
 
 void host_set_buttons(unsigned b);
 void host_request_shot(const char *path);
@@ -15,9 +16,38 @@ void host_request_shot(const char *path);
 static Ui ui;
 static char outdir[256];
 
+/* audio: grava tudo que o mixer gera num WAV (22050 Hz mono) */
+static FILE *wav;
+static long wav_samples;
+static int audio_acc;
+
+static void wav_u32(unsigned v) { fputc(v & 255, wav); fputc((v >> 8) & 255, wav); fputc((v >> 16) & 255, wav); fputc(v >> 24, wav); }
+
+static void wav_close(void)
+{
+    if (!wav) return;
+    fseek(wav, 0, SEEK_SET);
+    fwrite("RIFF", 1, 4, wav); wav_u32(36 + (unsigned)wav_samples * 2);
+    fwrite("WAVEfmt ", 1, 8, wav); wav_u32(16); wav_u32(1 | (1 << 16)); wav_u32(AUDIO_RATE);
+    wav_u32(AUDIO_RATE * 2); wav_u32(2 | (16 << 16));
+    fwrite("data", 1, 4, wav); wav_u32((unsigned)wav_samples * 2);
+    fclose(wav);
+    wav = NULL;
+}
+
 static void frame(unsigned buttons, const char *shot)
 {
     char path[512];
+    if (wav) {
+        short buf[512];
+        int n;
+        audio_acc += AUDIO_RATE;
+        n = audio_acc / 60;
+        audio_acc -= n * 60;
+        audio_mix(buf, n);
+        fwrite(buf, 2, (size_t)n, wav);
+        wav_samples += n;
+    }
     host_set_buttons(buttons);
     ui_update(&ui, plat_buttons());
     if (shot) {
@@ -50,6 +80,10 @@ static int until(int state, int limit)
 static int run_shots(void)
 {
     int guard;
+    char wpath[512];
+    snprintf(wpath, sizeof(wpath), "%s/partida.wav", outdir);
+    wav = fopen(wpath, "wb");
+    if (wav) { static char hdr[44]; fwrite(hdr, 1, 44, wav); }
     plat_init();
     ui_init(&ui, 7);
     wait(30);
@@ -184,6 +218,8 @@ static int run_shots(void)
     press(BTN_CROSS);
     press(BTN_RIGHT); press(BTN_RIGHT); press(BTN_RIGHT);
     shot("18_reglas_es");
+    wav_close();
+    printf("audio: %s/partida.wav (%.1f s)\n", outdir, wav_samples / (double)AUDIO_RATE);
     return 0;
 }
 

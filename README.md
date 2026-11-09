@@ -107,6 +107,22 @@ Nas dicas da tela e nas regras, os nomes dos botões viram ícones: nos textos d
 escrever `{X}`, `{O}`, `{T}`, `{Q}`, `{U}`, `{D}`, `{L}`, `{R}`, `{L1}`, `{R1}`, `{L2}`, `{R2}`,
 `{ST}` (START), `{SE}` (SELECT) ou `{AN}` (analógico).
 
+### Música e efeitos sonoros
+
+Toda a trilha é sintetizada por `tools/genaudio.py` (composições originais, tema "fazendinha"):
+
+- **Manhã na Horta** (menus): banjo dedilhado, violão "boom-chick", baixo, violino e chocalho, 120 bpm.
+- **Tarde no Campo** (partida): mais calma, banjo e assobio, 96 bpm.
+- Efeitos: dados chacoalhando e caindo, plantar ("ploc" na terra), porco comendo (oinc), galo no
+  início, galinha na vez do jogador, vaca na última rodada, caixa registradora no mercado, brilho
+  ao ganhar poder, fanfarra de vitória, cliques de menu e erro.
+
+As músicas ficam em µ-law de 8 bits e os efeitos em PCM de 16 bits (`assets/audio.bin`, ~2 MB).
+No PS2, o `audsrv.irx` do PS2SDK vai embutido no ELF e um mixer no EE (`src/audio.c`) mistura a
+música com até 8 efeitos a 22050 Hz. Para regenerar os sons: `pip install numpy scipy` e
+`python3 tools/genaudio.py` (gera também prévias em `build-audio/*.wav`). O teste no PC grava o
+áudio da partida roteirizada em `build-host/shots/partida.wav`.
+
 ### Testes no PC
 
 O motor de regras e a interface são C puro, separados da camada do PS2, então rodam no PC:
@@ -124,6 +140,7 @@ make -f Makefile.host shots   # capturas de tela (.ppm) em build-host/shots/
 | `src/ai.c` | jogadores CPU (Fácil e Normal) |
 | `src/ui.c` | telas, menus, fluxo da partida |
 | `src/gfx.c` | desenho: texto, dados, verduras, porco, painéis |
+| `src/audio.c`, `tools/genaudio.py` | mixer de áudio e síntese da música/efeitos |
 | `src/lang.c` | todos os textos e regras em português, inglês e espanhol |
 | `art/sheet1.png`, `art/sheet2.png` | folhas de arte originais (HUD, mascotes, letras) |
 | `art/splash.png` | arte de abertura (tela inicial, idioma e menu) |

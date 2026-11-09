@@ -7,14 +7,16 @@ CC=mips64r5900el-ps2-elf-gcc
 CFLAGS="-D_EE -G0 -O2 -Wall -std=gnu99 -I$PS2SDK/ee/include -I$PS2SDK/common/include -I$GSKIT/include -Isrc"
 mkdir -p build-ps2
 OBJS=""
-for f in main_ps2 plat_ps2 ui gfx ai game lang font_data; do
+for f in main_ps2 plat_ps2 ui gfx ai game lang audio font_data; do
     $CC $CFLAGS -c src/$f.c -o build-ps2/$f.o
     OBJS="$OBJS build-ps2/$f.o"
 done
 $CC $CFLAGS -c src/assets.S -o build-ps2/assets.o
-OBJS="$OBJS build-ps2/assets.o"
+$CC $CFLAGS -DAUDSRV_IRX_PATH="\"$PS2SDK/iop/irx/audsrv.irx\"" -DLIBSD_IRX_PATH="\"$PS2SDK/iop/irx/libsd.irx\"" \
+    -c src/irx.S -o build-ps2/irx.o
+OBJS="$OBJS build-ps2/assets.o build-ps2/irx.o"
 $CC -T$PS2SDK/ee/startup/linkfile -O2 -o horta_de_dados.elf $OBJS \
     -L$PS2SDK/ee/lib -L$GSKIT/lib -Wl,-zmax-page-size=128 \
-    -lgskit_toolkit -lgskit -ldmakit -lpad -lpatches -lm
+    -lgskit_toolkit -lgskit -ldmakit -laudsrv -lpad -lpatches -lm
 mips64r5900el-ps2-elf-strip horta_de_dados.elf
 ls -l horta_de_dados.elf
