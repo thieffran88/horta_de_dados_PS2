@@ -11,6 +11,7 @@
 #include "../src/audio.h"
 
 void host_set_buttons(unsigned b);
+void host_set_buttons2(unsigned b);
 void host_request_shot(const char *path);
 
 static Ui ui;
@@ -49,7 +50,7 @@ static void frame(unsigned buttons, const char *shot)
         wav_samples += n;
     }
     host_set_buttons(buttons);
-    ui_update(&ui, plat_buttons());
+    ui_update(&ui, plat_buttons(0), plat_buttons(1));
     if (shot) {
         snprintf(path, sizeof(path), "%s/%s.ppm", outdir, shot);
         host_request_shot(path);
@@ -223,6 +224,58 @@ static int run_shots(void)
     return 0;
 }
 
+/* aperta um botao so no controle 2 */
+static void press2(unsigned b)
+{
+    host_set_buttons2(b); frame(0, NULL); frame(0, NULL);
+    host_set_buttons2(0); frame(0, NULL); frame(0, NULL);
+}
+
+/* Controle 1 so joga pelo jogador 1; controle 2 so pelos jogadores 2, 3 e 4. */
+static int run_pads(void)
+{
+    int guard, checked[2] = { 0, 0 }, fails = 0;
+    plat_init();
+    ui_init(&ui, 3);
+    wait(30);
+    press(BTN_CROSS); press(BTN_CROSS); press(BTN_CROSS);         /* abertura, idioma, novo jogo */
+    if (ui.state != ST_SETUP) { printf("ERRO: nao chegou na nova partida\n"); return 1; }
+    press(BTN_RIGHT);                                               /* 3 jogadores */
+    press(BTN_DOWN); press(BTN_DOWN); press(BTN_LEFT); press(BTN_LEFT); /* jogador 2: CPU Normal -> Humano */
+    if (ui.setup_type[0] != 0 || ui.setup_type[1] != 0 || ui.setup_type[2] == 0) {
+        printf("ERRO: configuracao inesperada %d %d %d\n", ui.setup_type[0], ui.setup_type[1], ui.setup_type[2]);
+        return 1;
+    }
+    press(BTN_START);
+    for (guard = 0; guard < 20000 && !(checked[0] && checked[1]); guard++) {
+        if (ui.state == ST_ROLL && ui.g.phase == PHASE_ROLL && !ui.g.p[ui.g.start_player].is_cpu) {
+            int mine = ui_player_pad(ui.g.start_player);
+            /* o outro controle nao pode rolar */
+            if (mine == 0) press2(BTN_CROSS); else press(BTN_CROSS);
+            if (ui.g.phase != PHASE_ROLL) { printf("ERRO: controle errado rolou os dados\n"); fails++; }
+            if (mine == 0) press(BTN_CROSS); else press2(BTN_CROSS);
+            if (ui.g.phase == PHASE_ROLL) { printf("ERRO: controle certo nao rolou os dados\n"); fails++; }
+        } else if (ui.state == ST_PICK) {
+            int who = ui.g.current, mine = ui_player_pad(who), sel;
+            while (ui.banner_timer > 0) frame(0, NULL);
+            sel = ui.pick_sel;
+            if (mine == 0) press2(BTN_RIGHT); else press(BTN_RIGHT);
+            if (ui.pick_sel != sel) { printf("ERRO: jogador %d foi controlado pelo controle errado\n", who + 1); fails++; }
+            if (mine == 0) press2(BTN_CROSS); else press(BTN_CROSS);
+            if (ui.state != ST_PICK) { printf("ERRO: controle errado pegou o dado do jogador %d\n", who + 1); fails++; }
+            if (mine == 0) press(BTN_RIGHT); else press2(BTN_RIGHT);
+            if (ui.g.pool_n > 1 && ui.pick_sel == sel) { printf("ERRO: controle certo nao moveu o cursor\n"); fails++; }
+            checked[mine] = 1;
+            if (mine == 0) { press(BTN_CROSS); press(BTN_CROSS); } else { press2(BTN_CROSS); press2(BTN_CROSS); }
+        } else if (ui.state == ST_MARKET) press(BTN_CROSS);
+        else frame(0, NULL);
+    }
+    if (!checked[0] || !checked[1]) { printf("ERRO: nao testou os dois controles (%d %d)\n", checked[0], checked[1]); return 1; }
+    if (fails) return 1;
+    printf("controles ok: controle 1 so joga pelo jogador 1, controle 2 so pelos demais\n");
+    return 0;
+}
+
 static int run_sim(int n)
 {
     static Game g;
@@ -272,6 +325,7 @@ int main(int argc, char **argv)
         return run_shots();
     }
     if (argc >= 3 && !strcmp(argv[1], "sim")) return run_sim(atoi(argv[2]));
+    if (argc >= 2 && !strcmp(argv[1], "pads")) return run_pads();
     fprintf(stderr, "uso: %s shots <dir> | sim <n>\n", argv[0]);
     return 2;
 }

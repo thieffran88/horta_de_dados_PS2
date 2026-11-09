@@ -34,8 +34,10 @@ depois pelo item *Idioma* do menu principal.
 | START | pausa (com "Como jogar" e "Sair") |
 | Segurar X | acelera a jogada da CPU |
 
-Vários humanos jogam no mesmo controle (o jogo avisa quando passar o controle). O controle da
-porta 2 também funciona, e o analógico esquerdo serve de direcional.
+**Controle 1** joga só pelo jogador 1. **Controle 2** joga pelos jogadores 2, 3 e 4 (que passam
+o controle 2 entre si) e não mexe no jogador 1. Na vez de cada um, o jogo avisa qual controle usar
+e o placar mostra **C1**/**C2** ao lado do nome. Menus, pausa e as jogadas da CPU aceitam os dois
+controles. O analógico esquerdo também serve de direcional.
 
 ### Regras
 

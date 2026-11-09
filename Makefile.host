@@ -24,6 +24,7 @@ test: all
 	$(OUT)/test_rules
 	$(OUT)/test_audio
 	$(OUT)/horta_host sim 300
+	$(OUT)/horta_host pads
 
 shots: $(OUT)/horta_host
 	@mkdir -p $(OUT)/shots

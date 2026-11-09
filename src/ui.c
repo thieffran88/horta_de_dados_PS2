@@ -120,7 +120,7 @@ static void begin_turn(Ui *u)
     } else {
         u->state = ST_PICK;
         /* Com mais de um humano, avisa de quem e a vez (passa o controle). */
-        u->banner_timer = humans(u) > 1 ? 90 : 45;
+        u->banner_timer = humans(u) > 1 ? 90 : 60; /* mostra qual controle usar */
         audio_sfx(SFX_CLUCK);
     }
 }
@@ -479,27 +479,58 @@ static void ui_music(const Ui *u)
     }
 }
 
-static void ui_update_inner(Ui *u, unsigned b);
+static void ui_update_inner(Ui *u, unsigned pad1, unsigned pad2);
 
-void ui_update(Ui *u, unsigned b)
+void ui_update(Ui *u, unsigned pad1, unsigned pad2)
 {
     UiSnap before, after;
     snap(u, &before);
-    ui_update_inner(u, b);
+    ui_update_inner(u, pad1, pad2);
     snap(u, &after);
     ui_sounds(u, &before, &after);
     ui_music(u);
 }
 
-static void ui_update_inner(Ui *u, unsigned b)
+int ui_player_pad(int player) { return player == 0 ? 0 : 1; }
+
+/* Quem pode agir agora: -1 = qualquer controle; 0/1 = so aquele controle. */
+static int input_owner(const Ui *u)
 {
-    u->frame++;
-    u->pressed = b & ~u->held;
-    if (u->pressed & DIRS) u->repeat_timer = 18;
-    else if (b & DIRS & u->held) {
-        if (--u->repeat_timer <= 0) { u->pressed |= b & DIRS; u->repeat_timer = 6; }
+    const Game *g = &u->g;
+    switch (u->state) {
+    case ST_PICK: case ST_PLACE:
+        return ui_player_pad(g->current);
+    case ST_ROLL:
+        if (g->phase == PHASE_ROLL && !g->p[g->start_player].is_cpu) return ui_player_pad(g->start_player);
+        return -1;
     }
-    u->held = b;
+    return -1;
+}
+
+static void ui_update_inner(Ui *u, unsigned pad1, unsigned pad2)
+{
+    unsigned pads[2];
+    int i, owner;
+    pads[0] = pad1;
+    pads[1] = pad2;
+    u->frame++;
+    for (i = 0; i < 2; i++) {
+        unsigned b = pads[i];
+        u->pad_pressed[i] = b & ~u->pad_held[i];
+        if (u->pad_pressed[i] & DIRS) u->pad_repeat[i] = 18;
+        else if (b & DIRS & u->pad_held[i]) {
+            if (--u->pad_repeat[i] <= 0) { u->pad_pressed[i] |= b & DIRS; u->pad_repeat[i] = 6; }
+        }
+        u->pad_held[i] = b;
+    }
+    owner = input_owner(u);
+    if (owner < 0) {
+        u->pressed = u->pad_pressed[0] | u->pad_pressed[1];
+        u->held = u->pad_held[0] | u->pad_held[1];
+    } else {
+        u->pressed = u->pad_pressed[owner];
+        u->held = u->pad_held[owner];
+    }
     if (u->msg_timer > 0) u->msg_timer--;
 
     switch (u->state) {
@@ -580,7 +611,8 @@ static void draw_pool(const Ui *u)
     gfx_panel(POOL_X, POOL_Y, 400, 64);
     if (u->state == ST_ROLL && g->phase == PHASE_ROLL) {
         char b[96];
-        snprintf(b, sizeof(b), T(is_cpu(u, g->start_player) ? S_WILL_ROLL : S_PRESS_ROLL), g->p[g->start_player].name);
+        snprintf(b, sizeof(b), T(is_cpu(u, g->start_player) ? S_WILL_ROLL : S_PRESS_ROLL), g->p[g->start_player].name,
+                 ui_player_pad(g->start_player) + 1);
         /* tres dados "chacoalhando" na mao antes de rolar */
         for (i = 0; i < 3; i++)
             gfx_dice(POOL_X + 26.0f + (float)i * 14.0f, POOL_Y + 32.0f + (float)((u->frame / 6 + (unsigned)i) % 2) * 2.0f,
@@ -807,6 +839,12 @@ static void draw_scores(const Ui *u)
         gfx_card(x, y, w, 76, border);
         gfx_text(x + 9, y + 5, p->name, COL_INK);
         if (p->is_cpu) gfx_text(x + 13 + gfx_text_width(p->name), y + 5, "CPU", CRGB(120, 110, 170));
+        else {
+            /* controle deste jogador: C1 = so o jogador 1, C2 = os demais */
+            char cb[8];
+            snprintf(cb, sizeof(cb), "C%d", ui_player_pad(i) + 1);
+            gfx_text(x + 13 + gfx_text_width(p->name), y + 5, cb, CRGB(50, 110, 200));
+        }
         if (i == g->start_player) gfx_spr(SPR_PIGLET, x + w - 34, y + 3);
         for (k = 0; k < NUM_VEG; k++) {
             float ix = x + 9.0f + (float)k * (w - 18.0f) / 3.0f;
@@ -846,7 +884,11 @@ static void draw_board(Ui *u)
         gfx_spr(SPR_M_PIG, 136, 166);
         gfx_big_center(360, 172, T(S_YOUR_TURN), 34);
         gfx_text_center(360, 214, u->g.p[u->g.current].name, COL_WHITE);
-        if (humans(u) > 1) gfx_text_center(320, 240, T(S_PASS_PAD), CRGB(255, 230, 190));
+        {
+            char pb[96];
+            snprintf(pb, sizeof(pb), T(S_PASS_PAD), ui_player_pad(u->g.current) + 1);
+            gfx_text_center(360, 236, pb, CRGB(255, 230, 190));
+        }
     }
     if (u->state == ST_MARKET) {
         const Game *g = &u->g;

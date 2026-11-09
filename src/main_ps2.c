@@ -12,7 +12,7 @@ int main(int argc, char *argv[])
     plat_init();
     ui_init(&ui, plat_seed());
     for (;;) {
-        ui_update(&ui, plat_buttons());
+        ui_update(&ui, plat_buttons(0), plat_buttons(1));
         plat_frame_begin(COL_BG);
         ui_draw(&ui);
         plat_frame_end();

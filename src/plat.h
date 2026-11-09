@@ -39,7 +39,7 @@ extern const unsigned char asset_splash[];
 int  plat_init(void);
 void plat_frame_begin(Color clear);
 void plat_frame_end(void);
-unsigned plat_buttons(void);          /* botoes pressionados agora (todas as portas) */
+unsigned plat_buttons(int port);     /* botoes pressionados agora no controle 0 (porta 1) ou 1 (porta 2) */
 unsigned plat_seed(void);
 
 void plat_rect(float x, float y, float w, float h, Color c);

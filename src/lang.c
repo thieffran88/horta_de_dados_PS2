@@ -42,8 +42,8 @@ static const char *STR[S_COUNT][NUM_LANGS] = {
     [S_LAST_ROUND] = { "ÚLTIMA RODADA!", "LAST ROUND!", "¡ÚLTIMA RONDA!" },
     [S_TURN] = { "Vez: %s", "Turn: %s", "Turno: %s" },
     [S_WILL_ROLL] = { "%s vai rolar os dados...", "%s is rolling the dice...", "%s va a tirar los dados..." },
-    [S_PRESS_ROLL] = { "%s: aperte {X} para rolar os dados!", "%s: press {X} to roll the dice!",
-                       "%s: ¡pulsa {X} para tirar los dados!" },
+    [S_PRESS_ROLL] = { "%s  ·  controle %d  ·  {X} rolar", "%s  ·  controller %d  ·  {X} roll",
+                       "%s  ·  mando %d  ·  {X} tirar" },
     [S_MARKET] = { "Mercado", "Market", "Mercado" },
     [S_WORTH] = { "vale %d", "%d pt", "vale %d" },
     [S_CANT_PLANT] = { "Não dá para plantar! {X} alimentar o porco (+%d)", "Can't plant it! {X} feed the pig (+%d)",
@@ -68,8 +68,7 @@ static const char *STR[S_COUNT][NUM_LANGS] = {
                   "La CPU está pensando...  (mantén {X} para acelerar)" },
     [S_H_MARKET] = { "{X} continuar", "{X} continue", "{X} continuar" },
     [S_YOUR_TURN] = { "SUA VEZ!", "YOUR TURN!", "¡TU TURNO!" },
-    [S_PASS_PAD] = { "Passe o controle! Aperte qualquer botão.", "Pass the controller! Press any button.",
-                     "¡Pasa el mando! Pulsa cualquier botón." },
+    [S_PASS_PAD] = { "Use o controle %d", "Use controller %d", "Usa el mando %d" },
     [S_LEFTOVER] = { "Sobrou um dado na reserva:", "One die is left in the pool:", "Queda un dado en la reserva:" },
     [S_MARKET_UP] = { "Mercado de %s sobe! Agora vale %d.", "%s market goes up! Now worth %d.",
                       "¡Sube el mercado de %s! Ahora vale %d." },
@@ -204,7 +203,7 @@ static const RulesPage RULES[NUM_LANGS][RULES_PAGES] = {
         "      {O}  devolver o dado e escolher outro.\n"
         "{L1}{R1}{L2}{R2}{SE}  ver a horta dos outros jogadores.\n"
         "{ST}  pausa.      Segure {X} para acelerar a CPU.\n\n"
-        "Até 4 jogadores no mesmo controle (passe o controle) ou contra a CPU." } },
+        "Controle 1: jogador 1. Controle 2: jogadores 2, 3 e 4 (passem o controle 2 entre si)." } },
     { /* ---------------- English ---------------- */
       { "GOAL",
         "In Horta de Dados you pick dice to plant carrots, lettuces and tomatoes in your garden "
@@ -262,7 +261,7 @@ static const RulesPage RULES[NUM_LANGS][RULES_PAGES] = {
         "      {O}  put the die back and pick another.\n"
         "{L1}{R1}{L2}{R2}{SE}  look at the other players' gardens.\n"
         "{ST}  pause.      Hold {X} to speed up the CPU.\n\n"
-        "Up to 4 players on one controller (pass it around) or against the CPU." } },
+        "Controller 1: player 1. Controller 2: players 2, 3 and 4 (pass controller 2 around)." } },
     { /* ---------------- Espanol ---------------- */
       { "OBJETIVO",
         "En Horta de Dados eliges dados para plantar zanahorias, lechugas y tomates en tu huerto "
@@ -320,7 +319,7 @@ static const RulesPage RULES[NUM_LANGS][RULES_PAGES] = {
         "      {O}  devolver el dado y elegir otro.\n"
         "{L1}{R1}{L2}{R2}{SE}  ver los huertos de los demás.\n"
         "{ST}  pausa.      Mantén {X} para acelerar a la CPU.\n\n"
-        "Hasta 4 jugadores con un mando (pásalo) o contra la CPU." } },
+        "Mando 1: jugador 1. Mando 2: jugadores 2, 3 y 4 (pasaos el mando 2)." } },
 };
 
 static int L(void) { return (g_lang >= 0 && g_lang < NUM_LANGS) ? g_lang : 0; }

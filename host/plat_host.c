@@ -38,7 +38,9 @@ int plat_init(void)
     }
     return 0;
 }
-unsigned plat_buttons(void) { return host_buttons; }
+static unsigned host_buttons2;
+void host_set_buttons2(unsigned b) { host_buttons2 = b; }
+unsigned plat_buttons(int port) { return port == 0 ? host_buttons : host_buttons2; }
 unsigned plat_seed(void) { return 20261109u; }
 
 static void blend(int x, int y, Color c, int extra_a)

@@ -148,40 +148,37 @@ static void open_pads(void)
         pad_open[port] = padPortOpen(port, 0, pad_buf[port]) != 0;
 }
 
-unsigned plat_buttons(void)
+unsigned plat_buttons(int port)
 {
     unsigned out = 0;
-    int port;
-    for (port = 0; port < 2; port++) {
-        struct padButtonStatus st;
-        int state;
-        u32 b;
-        if (!pad_open[port]) continue;
-        state = padGetState(port, 0);
-        if (state != PAD_STATE_STABLE && state != PAD_STATE_FINDCTP1) continue;
-        if (padRead(port, 0, &st) == 0) continue;
-        b = 0xFFFF ^ st.btns;
-        if (b & PAD_UP) out |= BTN_UP;
-        if (b & PAD_DOWN) out |= BTN_DOWN;
-        if (b & PAD_LEFT) out |= BTN_LEFT;
-        if (b & PAD_RIGHT) out |= BTN_RIGHT;
-        if (b & PAD_CROSS) out |= BTN_CROSS;
-        if (b & PAD_CIRCLE) out |= BTN_CIRCLE;
-        if (b & PAD_SQUARE) out |= BTN_SQUARE;
-        if (b & PAD_TRIANGLE) out |= BTN_TRIANGLE;
-        if (b & PAD_L1) out |= BTN_L1;
-        if (b & PAD_R1) out |= BTN_R1;
-        if (b & PAD_L2) out |= BTN_L2;
-        if (b & PAD_R2) out |= BTN_R2;
-        if (b & PAD_START) out |= BTN_START;
-        if (b & PAD_SELECT) out |= BTN_SELECT;
-        /* analogico esquerdo tambem funciona como direcional (modo DualShock) */
-        if ((st.mode >> 4) == 0x07) {
-            if (st.ljoy_h < 0x30) out |= BTN_LEFT;
-            if (st.ljoy_h > 0xD0) out |= BTN_RIGHT;
-            if (st.ljoy_v < 0x30) out |= BTN_UP;
-            if (st.ljoy_v > 0xD0) out |= BTN_DOWN;
-        }
+    struct padButtonStatus st;
+    int state;
+    u32 b;
+    if (port < 0 || port > 1 || !pad_open[port]) return 0;
+    state = padGetState(port, 0);
+    if (state != PAD_STATE_STABLE && state != PAD_STATE_FINDCTP1) return 0;
+    if (padRead(port, 0, &st) == 0) return 0;
+    b = 0xFFFF ^ st.btns;
+    if (b & PAD_UP) out |= BTN_UP;
+    if (b & PAD_DOWN) out |= BTN_DOWN;
+    if (b & PAD_LEFT) out |= BTN_LEFT;
+    if (b & PAD_RIGHT) out |= BTN_RIGHT;
+    if (b & PAD_CROSS) out |= BTN_CROSS;
+    if (b & PAD_CIRCLE) out |= BTN_CIRCLE;
+    if (b & PAD_SQUARE) out |= BTN_SQUARE;
+    if (b & PAD_TRIANGLE) out |= BTN_TRIANGLE;
+    if (b & PAD_L1) out |= BTN_L1;
+    if (b & PAD_R1) out |= BTN_R1;
+    if (b & PAD_L2) out |= BTN_L2;
+    if (b & PAD_R2) out |= BTN_R2;
+    if (b & PAD_START) out |= BTN_START;
+    if (b & PAD_SELECT) out |= BTN_SELECT;
+    /* analogico esquerdo tambem funciona como direcional (modo DualShock) */
+    if ((st.mode >> 4) == 0x07) {
+        if (st.ljoy_h < 0x30) out |= BTN_LEFT;
+        if (st.ljoy_h > 0xD0) out |= BTN_RIGHT;
+        if (st.ljoy_v < 0x30) out |= BTN_UP;
+        if (st.ljoy_v > 0xD0) out |= BTN_DOWN;
     }
     return out;
 }

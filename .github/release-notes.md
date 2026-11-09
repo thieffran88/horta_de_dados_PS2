@@ -16,6 +16,7 @@ Português, English e Español.
 - Jogadores CPU (Fácil e Normal) e até 4 pessoas no mesmo controle.
 - HUD com arte própria, abertura em tela cheia, ícones dos botões e dados animados.
 - Música e efeitos sonoros com tema de fazendinha (v1.0.1: corrigido o áudio que tocava acelerado).
+- v1.0.2: controle 1 joga só pelo jogador 1; controle 2 pelos jogadores 2, 3 e 4.
 
 > Compilado automaticamente pelo GitHub Actions a partir do código desta tag.
 > Ainda não foi testado em um PS2 real: se encontrar algum problema, abra uma issue.

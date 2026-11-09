@@ -38,12 +38,16 @@ typedef struct {
     Color msg_color;
 
     /* entrada */
-    unsigned held, pressed;
-    int repeat_timer;
+    unsigned held, pressed;          /* do(s) controle(s) que podem agir agora */
+    unsigned pad_held[2], pad_pressed[2];
+    int pad_repeat[2];
 } Ui;
 
 void ui_init(Ui *u, unsigned seed);
-void ui_update(Ui *u, unsigned buttons);
+/* pad1 = controle 1 (so o jogador 1), pad2 = controle 2 (jogadores 2, 3 e 4).
+ * Nos menus e na vez da CPU, qualquer controle funciona. */
+void ui_update(Ui *u, unsigned pad1, unsigned pad2);
+int  ui_player_pad(int player);  /* 0 = controle 1, 1 = controle 2 */
 void ui_draw(Ui *u);
 
 #endif
