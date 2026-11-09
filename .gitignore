@@ -6,3 +6,4 @@ iso_root/
 *.iso
 assets/preview_*.png
 build-audio/
+__pycache__/
