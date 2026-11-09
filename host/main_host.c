@@ -53,6 +53,9 @@ static int run_shots(void)
     plat_init();
     ui_init(&ui, 7);
     wait(30);
+    shot("00a_abertura");
+    press(BTN_START);
+    wait(5);
     shot("00_idioma");
     press(BTN_CROSS);              /* portugues */
     wait(5);
@@ -68,6 +71,14 @@ static int run_shots(void)
     press(BTN_CROSS);
     wait(5);
     shot("03_rolar");
+    {   /* captura no meio da animacao de rolagem */
+        int k;
+        for (k = 0; k < 600 && !(ui.state == ST_ROLL && ui.g.phase == PHASE_PICK && ui.timer == 30); k++) {
+            if (ui.state == ST_ROLL && ui.g.phase == PHASE_ROLL && !ui.g.p[ui.g.start_player].is_cpu) press(BTN_CROSS);
+            else frame(0, NULL);
+        }
+        shot("03b_rolando");
+    }
 
     /* joga ate ser a vez de um humano escolher */
     for (guard = 0; guard < 4000 && ui.state != ST_PICK; guard++) {
@@ -133,6 +144,8 @@ static int run_shots(void)
     shot("11_regras");
     press(BTN_RIGHT); press(BTN_RIGHT);
     shot("12_regras_plantar");
+    { int k; for (k = 0; k < 5; k++) press(BTN_RIGHT); }
+    shot("12b_controles");
 
     /* ingles: escolhe o idioma pelo menu do titulo */
     press(BTN_CIRCLE);

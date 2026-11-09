@@ -64,20 +64,31 @@ static void make_font_texture(GSTEXTURE *t, const unsigned char *packed, int w, 
     init_texture(t, px, w, h, GS_FILTER_NEAREST);
 }
 
-/* Atlas de sprites: paleta RGBA de 256 cores + indices -> CT32 (alfa do GS: 0x80 = opaco). */
-static void make_rgba_texture(GSTEXTURE *t, const unsigned char *bin, int w, int h)
+/* Atlas de 8 bits com paleta (T8 + CLUT de 256 cores CT32). Ocupa 1/4 da VRAM de uma
+ * textura CT32. O GS le a CLUT de 256 cores no modo CSM1 com as entradas 8-15 e 16-23 de cada
+ * bloco de 32 trocadas; por isso a paleta e "rotacionada" aqui (igual ao carregador PNG do gsKit). */
+static void make_t8_texture(GSTEXTURE *t, const unsigned char *bin, int w, int h, int filter)
 {
-    int i, n = w * h;
     const unsigned char *pal = bin, *idx = bin + 1024;
-    u32 lut[256];
-    u32 *px = (u32 *)memalign(128, (size_t)n * 4);
+    u32 *clut = (u32 *)memalign(128, 256 * 4);
+    u8 *px = (u8 *)memalign(128, (size_t)w * h);
+    int i;
     for (i = 0; i < 256; i++) {
         const unsigned char *c = pal + i * 4;
-        u32 a = ((u32)c[3] + 1) >> 1;
-        lut[i] = (u32)c[0] | ((u32)c[1] << 8) | ((u32)c[2] << 16) | (a << 24);
+        u32 a = ((u32)c[3] + 1) >> 1; /* alfa do GS: 0x80 = opaco */
+        int j = ((i & 0x18) == 0x08) ? i + 8 : (((i & 0x18) == 0x10) ? i - 8 : i);
+        clut[j] = (u32)c[0] | ((u32)c[1] << 8) | ((u32)c[2] << 16) | (a << 24);
     }
-    for (i = 0; i < n; i++) px[i] = lut[idx[i]];
-    init_texture(t, px, w, h, GS_FILTER_LINEAR);
+    memcpy(px, idx, (size_t)w * h);
+    FlushCache(0);
+    memset(t, 0, sizeof(*t));
+    t->Width = (u32)w;
+    t->Height = (u32)h;
+    t->PSM = GS_PSM_T8;
+    t->Mem = (u32 *)px;
+    t->Clut = clut;
+    t->ClutPSM = GS_PSM_CT32;
+    t->Filter = (u32)filter;
 }
 
 /* ---------------- controles ---------------- */
@@ -175,10 +186,13 @@ int plat_init(void)
     /* layout feito para 640x448 (NTSC); no PAL (512 linhas) centraliza. */
     yoff = gs->Height > SCREEN_H ? (float)((gs->Height - SCREEN_H) / 2) : 0.0f;
 
-    /* VRAM: 2 framebuffers (~2,2 MB) + fonte 256 KB + sprites 1 MB + letras 256 KB < 4 MB */
+    /* VRAM: 2 framebuffers (~2,2 MB) + fonte 256 KB + sprites 256 KB + letras 64 KB
+     * + dados 512 KB + abertura 280 KB + paletas = ~3,6 MB, dentro dos 4 MB do GS. */
     make_font_texture(&tex[ATLAS_FONT], font_small_pixels, 256, 256);
-    make_rgba_texture(&tex[ATLAS_SPRITES], asset_sprites, SPRITES_W, SPRITES_H);
-    make_rgba_texture(&tex[ATLAS_BUBBLE], asset_bubble, BUBBLE_W, BUBBLE_H_TEX);
+    make_t8_texture(&tex[ATLAS_SPRITES], asset_sprites, SPRITES_W, SPRITES_H, GS_FILTER_LINEAR);
+    make_t8_texture(&tex[ATLAS_BUBBLE], asset_bubble, BUBBLE_W, BUBBLE_H_TEX, GS_FILTER_LINEAR);
+    make_t8_texture(&tex[ATLAS_DICE], asset_dice, DICE_W, DICE_H, GS_FILTER_LINEAR);
+    make_t8_texture(&tex[ATLAS_SPLASH], asset_splash, SPLASH_W, SPLASH_H, GS_FILTER_NEAREST);
     return 0;
 }
 

@@ -18,6 +18,7 @@ from scipy import ndimage as nd
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 S1 = np.asarray(Image.open(os.path.join(ROOT, "art/sheet1.png")).convert("RGB"))
 S2 = np.asarray(Image.open(os.path.join(ROOT, "art/sheet2.png")).convert("RGB"))
+SB = np.asarray(Image.open(os.path.join(ROOT, "art/buttons.png")).convert("RGB"))
 
 
 def isolate(sheet, box, keep="largest", white=232):
@@ -226,6 +227,23 @@ add("DPAD", fit(dpad, h=22))
 xb, _ = isolate(S1, (1166, 692, 1240, 760))
 add("XBTN", fit(xb, h=22))
 
+# icones dos botoes do controle (art/buttons.png); o logotipo do console nao e usado
+for name, box in [("B_L1", (50, 96, 281, 262)), ("B_L2", (462, 29, 675, 262)), ("B_R2", (860, 29, 1068, 262)),
+                  ("B_R1", (1242, 95, 1483, 262)), ("B_UP", (143, 362, 258, 496)), ("B_TRI", (564, 337, 686, 469)),
+                  ("B_LEFT", (46, 464, 170, 596)), ("B_RIGHT", (231, 464, 354, 596)), ("B_SQR", (449, 461, 573, 596)),
+                  ("B_CIR", (682, 461, 806, 596)), ("B_DOWN", (139, 565, 261, 706)), ("B_CRO", (562, 587, 691, 727)),
+                  ("B_SEL", (274, 835, 419, 931)), ("B_START", (1104, 832, 1247, 941)), ("B_STICK", (903, 413, 1134, 698))]:
+    b, _ = isolate(SB, box)
+    add(name, fit(b, h=20))
+
+# brilho amarelo do dado "caindo" (ultima coluna das folhas de dados)
+DO = np.asarray(Image.open(os.path.join(ROOT, "art/dice_orange.png")).convert("RGB"))
+_by = DO[0:120, 1340:1447].astype(int)
+_m = (_by[..., 0] > 200) & (_by[..., 1] > 180) & (_by[..., 2] < 120)
+_ys, _xs = np.nonzero(_m)
+burst, _ = isolate(DO, (1340 + _xs.min() - 3, _ys.min() - 3, 1340 + _xs.max() + 4, _ys.max() + 4), keep="all")
+add("BURST", fit(burst, h=18))
+
 # ---------------------------------------------------------------- empacotamento
 
 
@@ -289,6 +307,67 @@ GLs = [(c, fit(g, h=GH)) for c, g in GL]
 batlas, brects = pack(GLs, 512, 128)
 write_bin(batlas, os.path.join(ROOT, "assets/bubble.bin"))
 
+# ---------------------------------------------------------------- dados rolando
+def bands(p, thr=3):
+    runs, st = [], None
+    for i, v in enumerate(p > thr):
+        if v and st is None:
+            st = i
+        if not v and st is not None:
+            runs.append((st, i))
+            st = None
+    if st is not None:
+        runs.append((st, len(p)))
+    return [r for r in runs if r[1] - r[0] > 40]
+
+
+DICE_FILES = ["dice_orange", "dice_green", "dice_red"]  # cenoura, alface, tomate
+DICE_FRAMES = []   # (nome, rgba)
+DICE_META = {}     # (cor, valor, quadro) -> (indice, ox, oy)
+DIE_H = 42         # altura do dado parado (com sombra) na tela
+for k, fn in enumerate(DICE_FILES):
+    D = np.asarray(Image.open(os.path.join(ROOT, "art/%s.png" % fn)).convert("RGB"))
+    fg = D.min(axis=2) < 215
+    rows = bands(fg.sum(axis=1))
+    cols = bands(fg.sum(axis=0))
+    while len(cols) < 7:  # colunas grudadas pelos tracos de movimento: divide no vale
+        i = max(range(len(cols)), key=lambda j: cols[j][1] - cols[j][0])
+        a, b = cols[i]
+        prof = fg[:, a:b].sum(axis=0)
+        mid = a + 40 + int(prof[40:-40].argmin())
+        cols[i:i + 1] = [(a, mid), (mid, b)]
+    assert len(rows) == 6 and len(cols) == 7, (fn, rows, cols)
+    xc = [0] + [(cols[i][1] + cols[i + 1][0]) // 2 for i in range(6)] + [D.shape[1]]
+    yc = [0] + [(rows[i][1] + rows[i + 1][0]) // 2 for i in range(5)] + [D.shape[0]]
+    # escala pela altura do dado parado (coluna final, valor 1)
+    ref, _ = isolate(D, (xc[6], yc[0], xc[7], yc[1]))
+    sc = DIE_H / ref.shape[0]
+    for v in range(6):
+        for f in range(6):  # quadros 0..4 girando, 5 = parado
+            col = f + 1
+            box = (xc[col], yc[v], xc[col + 1], yc[v + 1])
+            fr, (ox, oy) = isolate(D, box, keep="largest" if f == 5 else "all")
+            w, h = max(1, round(fr.shape[1] * sc)), max(1, round(fr.shape[0] * sc))
+            ccx, ccy = (cols[col][0] + cols[col][1]) / 2, (rows[v][0] + rows[v][1]) / 2
+            DICE_META[(k, v, f)] = (len(DICE_FRAMES), round((ox - ccx) * sc), round((oy - ccy) * sc))
+            DICE_FRAMES.append(("%s_%d_%d" % (fn, v + 1, f), resize(fr, w, h)))
+    print(fn, "escala %.3f" % sc)
+
+datlas, drects = pack(DICE_FRAMES, 1024, 512)
+write_bin(datlas, os.path.join(ROOT, "assets/dice.bin"))
+
+# ---------------------------------------------------------------- arte de abertura
+# 640x448 com pixels nao quadrados (tela 4:3): redimensiona sem manter a proporcao
+SPL = Image.open(os.path.join(ROOT, "art/splash.png")).convert("RGB").resize((640, 448), Image.LANCZOS)
+q = SPL.quantize(256, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.FLOYDSTEINBERG)
+pal = q.getpalette()[:768]
+pal += [0] * (768 - len(pal))
+with open(os.path.join(ROOT, "assets/splash.bin"), "wb") as f:
+    for i in range(256):
+        f.write(bytes(pal[i * 3:i * 3 + 3] + [255]))
+    f.write(np.asarray(q, dtype=np.uint8).tobytes())
+q.convert("RGB").save(os.path.join(ROOT, "assets/preview_splash.png"))
+
 # ---------------------------------------------------------------- cabecalho
 with open(os.path.join(ROOT, "src/sprites.h"), "w") as f:
     f.write("/* Gerado por tools/genassets.py - nao edite. */\n#ifndef HORTA_SPRITES_H\n#define HORTA_SPRITES_H\n\n")
@@ -318,5 +397,18 @@ with open(os.path.join(ROOT, "src/sprites.h"), "w") as f:
     f.write("/* centros dos 6 circulos de cada caixote do mercado */\nstatic const float CRATE_CIRC[6][2] = {\n")
     for x, y in CRATE_CIRC:
         f.write("    { %.1ff, %.1ff },\n" % (x, y))
+    f.write("};\n\n/* animacao dos dados: [cor 0..2][valor-1][quadro 0..5] (5 = parado).\n")
+    f.write(" * x,y,w,h no atlas de dados; ox,oy = canto do sprite relativo ao centro do dado. */\n")
+    f.write("typedef struct { short x, y, w, h, ox, oy; } DiceFrame;\n#define DICE_FRAMES 6\n#define DICE_STILL 5\n")
+    f.write("static const DiceFrame DICE_FR[3][6][6] = {\n")
+    for k in range(3):
+        f.write("  {\n")
+        for v in range(6):
+            items = []
+            for fr in range(6):
+                i, ox, oy = DICE_META[(k, v, fr)]
+                items.append("{ %d, %d, %d, %d, %d, %d }" % (drects[i] + (ox, oy)))
+            f.write("    { " + ", ".join(items) + " },\n")
+        f.write("  },\n")
     f.write("};\n\n#endif\n")
 print("sprites:", len(SPR), " letras:", len(GLs))

@@ -12,9 +12,9 @@ static const char *STR[S_COUNT][NUM_LANGS] = {
     [S_MENU_RULES] = { "Como jogar", "How to play", "Cómo jugar" },
     [S_MENU_LANG] = { "Idioma", "Language", "Idioma" },
     [S_LANG_PROMPT] = { "Escolha o idioma", "Choose your language", "Elige el idioma" },
-    [S_HINT_CHOOSE] = { "Cima/Baixo: escolher", "Up/Down: choose", "Arriba/Abajo: elegir" },
+    [S_HINT_CHOOSE] = { "{U}{D} escolher", "{U}{D} choose", "{U}{D} elegir" },
     [S_CONFIRM] = { "Confirmar", "Confirm", "Confirmar" },
-    [S_BACK] = { "O: voltar", "O: back", "O: volver" },
+    [S_BACK] = { "{O} voltar", "{O} back", "{O} volver" },
     [S_SETUP_TITLE] = { "NOVA PARTIDA", "NEW GAME", "NUEVA PARTIDA" },
     [S_PLAYERS] = { "Jogadores", "Players", "Jugadores" },
     [S_PLAYER_N] = { "Jogador %d", "Player %d", "Jugador %d" },
@@ -36,37 +36,37 @@ static const char *STR[S_COUNT][NUM_LANGS] = {
         "points for the most carrots, lettuces, tomatoes and pig circles.",
         "Avanzado: los mercados empiezan en 0, los poderes del cerdo también cambian el color del dado "
         "y hay +5 puntos para quien tenga más zanahorias, lechugas, tomates y círculos del cerdo." },
-    [S_HINT_SETUP] = { "Cima/Baixo: opção   Esq/Dir: mudar", "Up/Down: option   Left/Right: change",
-                       "Arriba/Abajo: opción   Izq/Der: cambiar" },
+    [S_HINT_SETUP] = { "{U}{D} opção   {L}{R} mudar", "{U}{D} option   {L}{R} change",
+                       "{U}{D} opción   {L}{R} cambiar" },
     [S_ROUND_MODE] = { "Rodada %d  ·  %s", "Round %d  ·  %s", "Ronda %d  ·  %s" },
     [S_LAST_ROUND] = { "ÚLTIMA RODADA!", "LAST ROUND!", "¡ÚLTIMA RONDA!" },
     [S_TURN] = { "Vez: %s", "Turn: %s", "Turno: %s" },
     [S_WILL_ROLL] = { "%s vai rolar os dados...", "%s is rolling the dice...", "%s va a tirar los dados..." },
-    [S_PRESS_ROLL] = { "%s: aperte X para rolar os dados!", "%s: press X to roll the dice!",
-                       "%s: ¡pulsa X para tirar los dados!" },
+    [S_PRESS_ROLL] = { "%s: aperte {X} para rolar os dados!", "%s: press {X} to roll the dice!",
+                       "%s: ¡pulsa {X} para tirar los dados!" },
     [S_MARKET] = { "Mercado", "Market", "Mercado" },
     [S_WORTH] = { "vale %d", "%d pt", "vale %d" },
-    [S_CANT_PLANT] = { "Não dá para plantar! X: alimentar o porco (+%d)", "Can't plant it! X: feed the pig (+%d)",
-                       "¡No se puede plantar! X: alimentar al cerdo (+%d)" },
+    [S_CANT_PLANT] = { "Não dá para plantar! {X} alimentar o porco (+%d)", "Can't plant it! {X} feed the pig (+%d)",
+                       "¡No se puede plantar! {X} alimentar al cerdo (+%d)" },
     [S_VIEWING] = { "Vendo: horta de %s", "Viewing: %s's garden", "Viendo: huerto de %s" },
     [S_PIG] = { "Porco", "Pig", "Cerdo" },
     [S_POWERS] = { "Poderes: %d", "Powers: %d", "Poderes: %d" },
     [S_USING] = { "usando %d", "using %d", "usando %d" },
-    [S_H_ROLL] = { "X: rolar os dados   START: pausa", "X: roll the dice   START: pause",
-                   "X: tirar los dados   START: pausa" },
+    [S_H_ROLL] = { "{X} rolar os dados    {ST} pausa", "{X} roll the dice    {ST} pause",
+                   "{X} tirar los dados    {ST} pausa" },
     [S_H_ROLLING] = { "Rolando...", "Rolling...", "Tirando..." },
-    [S_H_PICK] = { "Esq/Dir: dado   X: pegar   L/R: ver hortas   START: pausa",
-                   "Left/Right: die   X: take   L/R: view gardens   START: pause",
-                   "Izq/Der: dado   X: coger   L/R: ver huertos   START: pausa" },
-    [S_H_PLACE] = { "X: confirmar   O: voltar   Cima/Baixo: linha   Esq/Dir: poder",
-                    "X: confirm   O: back   Up/Down: row   Left/Right: power",
-                    "X: confirmar   O: volver   Arriba/Abajo: fila   Izq/Der: poder" },
-    [S_H_PLACE_ADV] = { "X: ok  O: voltar  Cima/Baixo: linha  Esq/Dir: valor  Tri: cor",
-                        "X: ok  O: back  Up/Down: row  Left/Right: value  Tri: color",
-                        "X: ok  O: volver  Arr/Abj: fila  Izq/Der: valor  Tri: color" },
-    [S_H_CPU] = { "A CPU está pensando... (segure X para acelerar)", "The CPU is thinking... (hold X to speed up)",
-                  "La CPU está pensando... (mantén X para acelerar)" },
-    [S_H_MARKET] = { "X: continuar", "X: continue", "X: continuar" },
+    [S_H_PICK] = { "{L}{R} dado    {X} pegar    {L1}{R1} ver hortas    {ST} pausa",
+                   "{L}{R} die    {X} take    {L1}{R1} view gardens    {ST} pause",
+                   "{L}{R} dado    {X} coger    {L1}{R1} ver huertos    {ST} pausa" },
+    [S_H_PLACE] = { "{X} confirmar    {O} voltar    {U}{D} linha    {L}{R} poder do porco",
+                    "{X} confirm    {O} back    {U}{D} row    {L}{R} pig power",
+                    "{X} confirmar    {O} volver    {U}{D} fila    {L}{R} poder del cerdo" },
+    [S_H_PLACE_ADV] = { "{X} confirmar   {O} voltar   {U}{D} linha   {L}{R} valor   {T} cor",
+                        "{X} confirm   {O} back   {U}{D} row   {L}{R} value   {T} color",
+                        "{X} confirmar   {O} volver   {U}{D} fila   {L}{R} valor   {T} color" },
+    [S_H_CPU] = { "A CPU está pensando...  (segure {X} para acelerar)", "The CPU is thinking...  (hold {X} to speed up)",
+                  "La CPU está pensando...  (mantén {X} para acelerar)" },
+    [S_H_MARKET] = { "{X} continuar", "{X} continue", "{X} continuar" },
     [S_YOUR_TURN] = { "SUA VEZ!", "YOUR TURN!", "¡TU TURNO!" },
     [S_PASS_PAD] = { "Passe o controle! Aperte qualquer botão.", "Pass the controller! Press any button.",
                      "¡Pasa el mando! Pulsa cualquier botón." },
@@ -112,9 +112,9 @@ static const char *STR[S_COUNT][NUM_LANGS] = {
     [S_WON] = { "%s venceu!", "%s wins!", "¡%s gana!" },
     [S_TIE] = { "Empate! Vitória dividida: ", "Tie! Shared victory: ", "¡Empate! Victoria compartida: " },
     [S_AND] = { " e ", " and ", " y " },
-    [S_BACK_TITLE] = { "X: voltar ao título", "X: back to title", "X: volver al título" },
+    [S_BACK_TITLE] = { "{X} voltar ao título", "{X} back to title", "{X} volver al título" },
     [S_PAGE] = { "Página %d/%d", "Page %d/%d", "Página %d/%d" },
-    [S_RULES_HINT] = { "Esq/Dir: páginas   O: voltar", "Left/Right: pages   O: back", "Izq/Der: páginas   O: volver" },
+    [S_RULES_HINT] = { "{L}{R} páginas    {O} voltar", "{L}{R} pages    {O} back", "{L}{R} páginas    {O} volver" },
     [S_PTS] = { "pts", "pts", "pts" },
 };
 
@@ -195,15 +195,15 @@ static const RulesPage RULES[NUM_LANGS][RULES_PAGES] = {
         "porco (empates: todos ganham).\n\n"
         "Desempate: mais verduras plantadas; depois mais círculos no porco." },
       { "CONTROLES",
-        "Direcional Esq/Dir: escolher um dado da reserva.\n"
-        "X: pegar o dado / plantar / alimentar o porco.\n"
+        "{L}{R}  escolher um dado da reserva (ou o analógico {AN}).\n"
+        "{X}  pegar o dado / plantar / alimentar o porco.\n"
         "Com o dado na mão:\n"
-        "   Cima/Baixo: escolher a linha da coluna.\n"
-        "   Esq/Dir: gastar um poder do porco (-1 / +1).\n"
-        "   Triângulo: gastar um poder para trocar a cor (avançado).\n"
-        "   O: devolver o dado e escolher outro.\n"
-        "L1/R1/L2/R2/SELECT: ver a horta dos outros jogadores.\n"
-        "START: pausa.   Segure X para acelerar a CPU.\n\n"
+        "      {U}{D}  escolher a linha da coluna.\n"
+        "      {L}{R}  gastar um poder do porco (-1 / +1).\n"
+        "      {T}  gastar um poder para trocar a cor (avançado).\n"
+        "      {O}  devolver o dado e escolher outro.\n"
+        "{L1}{R1}{L2}{R2}{SE}  ver a horta dos outros jogadores.\n"
+        "{ST}  pausa.      Segure {X} para acelerar a CPU.\n\n"
         "Até 4 jogadores no mesmo controle (passe o controle) ou contra a CPU." } },
     { /* ---------------- English ---------------- */
       { "GOAL",
@@ -253,15 +253,15 @@ static const RulesPage RULES[NUM_LANGS][RULES_PAGES] = {
         "(ties: everyone tied gets it).\n\n"
         "Tiebreak: most vegetables planted; then most pig circles." },
       { "CONTROLS",
-        "D-pad Left/Right: choose a die from the pool.\n"
-        "X: take the die / plant / feed the pig.\n"
+        "{L}{R}  choose a die from the pool (or the analog stick {AN}).\n"
+        "{X}  take the die / plant / feed the pig.\n"
         "With a die in hand:\n"
-        "   Up/Down: choose the row in the column.\n"
-        "   Left/Right: spend a pig power (-1 / +1).\n"
-        "   Triangle: spend a power to change color (advanced).\n"
-        "   O: put the die back and pick another.\n"
-        "L1/R1/L2/R2/SELECT: look at the other players' gardens.\n"
-        "START: pause.   Hold X to speed up the CPU.\n\n"
+        "      {U}{D}  choose the row in the column.\n"
+        "      {L}{R}  spend a pig power (-1 / +1).\n"
+        "      {T}  spend a power to change color (advanced).\n"
+        "      {O}  put the die back and pick another.\n"
+        "{L1}{R1}{L2}{R2}{SE}  look at the other players' gardens.\n"
+        "{ST}  pause.      Hold {X} to speed up the CPU.\n\n"
         "Up to 4 players on one controller (pass it around) or against the CPU." } },
     { /* ---------------- Espanol ---------------- */
       { "OBJETIVO",
@@ -311,15 +311,15 @@ static const RulesPage RULES[NUM_LANGS][RULES_PAGES] = {
         "del cerdo (empates: todos lo reciben).\n\n"
         "Desempate: más verduras plantadas; después más círculos del cerdo." },
       { "CONTROLES",
-        "Cruceta Izq/Der: elegir un dado de la reserva.\n"
-        "X: coger el dado / plantar / alimentar al cerdo.\n"
+        "{L}{R}  elegir un dado de la reserva (o el stick analógico {AN}).\n"
+        "{X}  coger el dado / plantar / alimentar al cerdo.\n"
         "Con el dado en la mano:\n"
-        "   Arriba/Abajo: elegir la fila de la columna.\n"
-        "   Izq/Der: gastar un poder del cerdo (-1 / +1).\n"
-        "   Triángulo: gastar un poder para cambiar el color (avanzado).\n"
-        "   O: devolver el dado y elegir otro.\n"
-        "L1/R1/L2/R2/SELECT: ver los huertos de los demás.\n"
-        "START: pausa.   Mantén X para acelerar a la CPU.\n\n"
+        "      {U}{D}  elegir la fila de la columna.\n"
+        "      {L}{R}  gastar un poder del cerdo (-1 / +1).\n"
+        "      {T}  gastar un poder para cambiar el color (avanzado).\n"
+        "      {O}  devolver el dado y elegir otro.\n"
+        "{L1}{R1}{L2}{R2}{SE}  ver los huertos de los demás.\n"
+        "{ST}  pausa.      Mantén {X} para acelerar a la CPU.\n\n"
         "Hasta 4 jugadores con un mando (pásalo) o contra la CPU." } },
 };
 

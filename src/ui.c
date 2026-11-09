@@ -24,6 +24,9 @@
 #define BOARD_SC 0.86f
 #define HINT_Y 334
 #define SCORE_Y 366
+/* rolagem: cada dado gira com um pequeno atraso e "cai" com um brilho */
+#define ROLL_LAND(i) (22 + (i) * 3)
+#define ROLL_FRAMES 66
 
 /* ------------------------------------------------------------------ */
 
@@ -69,7 +72,7 @@ void ui_init(Ui *u, unsigned seed)
 {
     int i;
     memset(u, 0, sizeof(*u));
-    u->state = ST_LANG;          /* o jogo comeca escolhendo o idioma */
+    u->state = ST_SPLASH;        /* arte de abertura, depois a escolha do idioma */
     u->lang_sel = LANG_PT;
     u->setup_players = 2;
     u->setup_type[0] = 0;
@@ -182,6 +185,14 @@ static void upd_lang(Ui *u)
     }
 }
 
+static void upd_splash(Ui *u)
+{
+    if (u->frame > 20 && (u->pressed & (BTN_START | BTN_CROSS))) {
+        u->lang_sel = g_lang;
+        u->state = ST_LANG;
+    }
+}
+
 static void upd_title(Ui *u)
 {
     if (u->pressed & BTN_UP) u->menu_sel = (u->menu_sel + 2) % 3;
@@ -245,7 +256,7 @@ static void upd_roll(Ui *u)
         if (!cpu && (u->pressed & BTN_START)) enter_pause(u);
         return;
     }
-    if (++u->timer >= 50) begin_turn(u); /* animacao da rolagem */
+    if (++u->timer >= ROLL_FRAMES) begin_turn(u); /* animacao da rolagem */
 }
 
 static void upd_pick(Ui *u)
@@ -406,6 +417,7 @@ void ui_update(Ui *u, unsigned b)
     if (u->msg_timer > 0) u->msg_timer--;
 
     switch (u->state) {
+    case ST_SPLASH: upd_splash(u); break;
     case ST_LANG: upd_lang(u); break;
     case ST_TITLE: upd_title(u); break;
     case ST_SETUP: upd_setup(u); break;
@@ -483,25 +495,37 @@ static void draw_pool(const Ui *u)
     if (u->state == ST_ROLL && g->phase == PHASE_ROLL) {
         char b[96];
         snprintf(b, sizeof(b), T(is_cpu(u, g->start_player) ? S_WILL_ROLL : S_PRESS_ROLL), g->p[g->start_player].name);
-        gfx_spr(SPR_I_DICE, POOL_X + 12, POOL_Y + 17);
-        gfx_text_center(POOL_X + 216, POOL_Y + 23, b, (u->frame / 20) % 2 ? COL_YELLOW : COL_WHITE);
+        /* tres dados "chacoalhando" na mao antes de rolar */
+        for (i = 0; i < 3; i++)
+            gfx_dice(POOL_X + 26.0f + (float)i * 14.0f, POOL_Y + 32.0f + (float)((u->frame / 6 + (unsigned)i) % 2) * 2.0f,
+                     i + 1, 1 + (int)((u->frame / 9 + (unsigned)i * 2) % 6), (int)((u->frame / 4 + (unsigned)i) % 5), 0.8f, 255);
+        gfx_text_center(POOL_X + 232, POOL_Y + 23, b, (u->frame / 20) % 2 ? COL_YELLOW : COL_WHITE);
         return;
     }
     for (i = 0; i < g->pool_n; i++) {
-        float x = POOL_X + 12.0f + (float)i * 43.0f, y = POOL_Y + 12.0f;
-        int v = g->pool[i].value, c = g->pool[i].color, hl = 0;
+        float cx = POOL_X + 31.0f + (float)i * 43.0f, cy = POOL_Y + 32.0f;
+        int v = g->pool[i].value, c = g->pool[i].color, frame = DICE_STILL, alpha = 255;
         if (u->state == ST_ROLL) {
-            v = 1 + (int)((u->frame / 3 + (unsigned)i * 7) % 6);
-            y += (float)(((u->frame + (unsigned)i * 5) % 8) < 4 ? -3 : 1);
-            if (u->timer > 40) v = g->pool[i].value;
+            int t = u->timer - i * 2, land = ROLL_LAND(i);
+            if (t < 0) continue;                          /* ainda nao foi lancado */
+            if (u->timer < land) {
+                /* girando: entra pela esquerda quicando */
+                float k = (float)(land - u->timer) / (float)(land - i * 2);
+                frame = (u->timer / 3 + i) % 5;
+                cx -= k * 60.0f;
+                cy -= (float)((u->timer / 3 + i) % 2) * 5.0f + k * 6.0f;
+            } else if (u->timer < land + 14) {
+                gfx_spr(SPR_BURST, cx + 12, cy - 26);
+            }
         }
         if ((u->state == ST_PICK || u->state == ST_PLACE || u->state == ST_CPU) && i == u->pick_sel) {
-            hl = 1;
-            if (u->sel_active) { y -= 4; v = u->adj_value; c = u->adj_color; }
+            gfx_rrect(cx - 21, cy - 23, 42, 44, 10, COL_HILITE);
+            if (u->sel_active) { cy -= 4; v = u->adj_value; c = u->adj_color; }
+        } else if (u->state == ST_MARKET && (u->frame / 15) % 2) {
+            gfx_rrect(cx - 21, cy - 23, 42, 44, 10, COL_HILITE);
         }
-        if (u->state == ST_MARKET) hl = (u->frame / 15) % 2;
-        gfx_die(x, y, 38, c, v, hl);
-        if (u->sel_active && i != u->pick_sel) gfx_rrect(x, y, 38, 38, 7, CRGBA(90, 50, 20, 150));
+        if (u->sel_active && i != u->pick_sel) alpha = 120;
+        gfx_dice(cx, cy, c, v, frame, 1.0f, alpha);
     }
 }
 
@@ -744,7 +768,7 @@ static void draw_board(Ui *u)
         char b[128];
         draw_wood_popup(110, 146, 420, 136);
         gfx_text_center(320, 160, T(S_LEFTOVER), COL_WHITE);
-        gfx_die(258, 184, 40, c, g->pool[0].value, 0);
+        gfx_dice(278, 204, c, g->pool[0].value, DICE_STILL, 1.0f, 255);
         gfx_spr(SPR_ARROW, 310, 192);
         gfx_spr(SPR_CRATE1 + c - 1, 338, 176);
         if (g->market[c - 1] < MARKET_MAX)
@@ -756,12 +780,6 @@ static void draw_board(Ui *u)
     }
 }
 
-static void draw_logo(float y)
-{
-    gfx_big_center(320, y, "HORTA DE DADOS", 50);
-    gfx_spr_c(SPR_BADGE, 320, y + 74, 1.0f);
-}
-
 static void draw_menu_button(float x, float y, float w, int icon, const char *label, int sel)
 {
     gfx_button(x, y, w, 40, sel);
@@ -769,25 +787,43 @@ static void draw_menu_button(float x, float y, float w, int icon, const char *la
     gfx_text_center(x + w / 2 + (icon >= 0 ? 14 : 0), y + 11, label, COL_INK);
 }
 
-static void draw_mascots(const Ui *u)
+/* Arte de abertura em tela cheia (o logotipo ja faz parte dela). */
+static void draw_splash_bg(int dim)
 {
-    float bob = (float)((u->frame / 12) % 2) * 3.0f;
-    gfx_spr(SPR_M_PIG, 24, 214 + bob);
-    gfx_spr(SPR_M_CARROT, 470, 190 - bob);
-    gfx_spr(SPR_M_TOMATO, 540, 218 + bob);
-    gfx_spr(SPR_M_LETTUCE, 486, 286 - bob);
+    plat_sprite(ATLAS_SPLASH, 0, 0, SPLASH_W, SPLASH_H, 0, 0, SPLASH_W, SPLASH_H, COL_WHITE);
+    if (dim) {
+        /* escurece abaixo do logotipo para o menu se destacar */
+        int k;
+        for (k = 0; k < 8; k++) plat_rect(0, 140.0f + (float)k * 4.0f, SCREEN_W, 4, CRGBA(0, 0, 0, k * 10));
+        plat_rect(0, 172, SCREEN_W, SCREEN_H - 172, CRGBA(0, 0, 0, 80));
+    }
+}
+
+static void draw_splash(Ui *u)
+{
+    draw_splash_bg(0);
+    if ((u->frame / 30) % 2 == 0) {
+        gfx_rrect(232, 400, 176, 34, 17, CRGBA(0, 0, 0, 120));
+        gfx_rrect(228, 396, 176, 34, 17, COL_WOOD_DARK);
+        gfx_rrect(231, 399, 170, 28, 14, CRGB(166, 92, 40));
+        gfx_text_center(316, 404, "{ST}  START  /  {X}", COL_YELLOW);
+    }
+}
+
+static void draw_menu_panel(void)
+{
+    gfx_panel(130, 160, 380, 196);
 }
 
 static void draw_lang(Ui *u)
 {
     int i;
-    draw_background(u, 1);
-    draw_logo(18);
-    draw_mascots(u);
-    gfx_text_center(320, 140, "Escolha o idioma  ·  Choose your language  ·  Elige el idioma", COL_WHITE);
+    draw_splash_bg(1);
+    draw_menu_panel();
+    gfx_text_center(320, 170, "Idioma  ·  Language", COL_YELLOW);
     for (i = 0; i < NUM_LANGS; i++)
-        draw_menu_button(200, 172.0f + (float)i * 50.0f, 240, -1, lang_name(i), u->lang_sel == i);
-    gfx_hintbar(120, 380, 400, "Cima/Baixo · Up/Down · Arriba/Abajo   X: OK");
+        draw_menu_button(196, 196.0f + (float)i * 50.0f, 248, -1, lang_name(i), u->lang_sel == i);
+    gfx_hintbar(190, 404, 260, "{U}{D}  ·  {X}  OK");
 }
 
 static void draw_title(Ui *u)
@@ -796,14 +832,13 @@ static void draw_title(Ui *u)
     static const int labels[3] = { S_MENU_NEW, S_MENU_RULES, S_MENU_LANG };
     char b[96];
     int i;
-    draw_background(u, 1);
-    draw_logo(18);
-    draw_mascots(u);
-    gfx_text_center(320, 136, T(S_TAGLINE), COL_WHITE);
+    draw_splash_bg(1);
+    draw_menu_panel();
+    gfx_text_center(320, 170, T(S_TAGLINE), COL_YELLOW);
     for (i = 0; i < 3; i++)
-        draw_menu_button(196, 172.0f + (float)i * 50.0f, 248, icons[i], T(labels[i]), u->menu_sel == i);
-    snprintf(b, sizeof(b), "%s    X: %s", T(S_HINT_CHOOSE), T(S_CONFIRM));
-    gfx_hintbar(150, 380, 340, b);
+        draw_menu_button(196, 196.0f + (float)i * 50.0f, 248, icons[i], T(labels[i]), u->menu_sel == i);
+    snprintf(b, sizeof(b), "%s     {X} %s", T(S_HINT_CHOOSE), T(S_CONFIRM));
+    gfx_hintbar(150, 404, 340, b);
 }
 
 static void draw_setup(Ui *u)
@@ -834,7 +869,7 @@ static void draw_setup(Ui *u)
             } else if (i == 0) gfx_spr_c(SPR_I_DICE, 144, y + 16, 0.7f);
             else gfx_spr_c(SPR_I_BOOK, 144, y + 16, 0.65f);
             gfx_text(166, y + 7, label, COL_INK);
-            snprintf(vb, sizeof(vb), "<  %.30s  >", val);
+            snprintf(vb, sizeof(vb), "{L} %.30s {R}", val);
             gfx_text(504 - gfx_text_width(vb), y + 7, vb, COL_INK);
         } else {
             gfx_text_center(320, y + 7, T(S_START), COL_INK);
@@ -842,14 +877,14 @@ static void draw_setup(Ui *u)
     }
     gfx_text_wrap(124, 72.0f + (float)rows * 35.0f + 4, 392, 17,
                   T(u->setup_adv ? S_ADV_DESC : S_BASIC_DESC), CRGB(255, 236, 200));
-    snprintf(b, sizeof(b), "%s   X: %s   %s", T(S_HINT_SETUP), T(S_CONFIRM), T(S_BACK));
+    snprintf(b, sizeof(b), "%s    {X} %s    %s", T(S_HINT_SETUP), T(S_CONFIRM), T(S_BACK));
     gfx_hintbar(40, 408, 560, b);
 }
 
 static void draw_rules(Ui *u)
 {
     static const int deco[RULES_PAGES] = { SPR_M_LETTUCE, SPR_I_DICE, SPR_SIGN3, SPR_PIG, SPR_POW_VALUE,
-                                           SPR_CRATE2, SPR_I_TROPHY, SPR_DPAD };
+                                           SPR_CRATE2, SPR_I_TROPHY, SPR_B_CRO };
     const RulesPage *rp = rules_page(u->rules_page);
     char b[64];
     int d = deco[u->rules_page], k;
@@ -950,6 +985,7 @@ static void draw_gameover(Ui *u)
 void ui_draw(Ui *u)
 {
     switch (u->state) {
+    case ST_SPLASH: draw_splash(u); break;
     case ST_LANG: draw_lang(u); break;
     case ST_TITLE: draw_title(u); break;
     case ST_SETUP: draw_setup(u); break;

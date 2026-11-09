@@ -9,7 +9,7 @@ extern const unsigned char font_small_pixels[];
 
 /* atlas RGBA expandidos a partir da paleta */
 static unsigned char *atlas_rgba[NUM_ATLAS];
-static int atlas_w[NUM_ATLAS] = { 256, SPRITES_W, BUBBLE_W };
+static int atlas_w[NUM_ATLAS] = { 256, SPRITES_W, BUBBLE_W, DICE_W, SPLASH_W };
 
 static unsigned char *expand(const unsigned char *bin, int w, int h)
 {
@@ -33,6 +33,8 @@ int plat_init(void)
     if (!atlas_rgba[ATLAS_SPRITES]) {
         atlas_rgba[ATLAS_SPRITES] = expand(asset_sprites, SPRITES_W, SPRITES_H);
         atlas_rgba[ATLAS_BUBBLE] = expand(asset_bubble, BUBBLE_W, BUBBLE_H_TEX);
+        atlas_rgba[ATLAS_DICE] = expand(asset_dice, DICE_W, DICE_H);
+        atlas_rgba[ATLAS_SPLASH] = expand(asset_splash, SPLASH_W, SPLASH_H);
     }
     return 0;
 }

@@ -149,6 +149,34 @@ static int next_cp(const char **ps)
     return '?';
 }
 
+/* Icones de botoes no meio do texto: "{X}", "{ST}", "{L1}"... */
+static const struct { const char *name; int spr; } TOKENS[] = {
+    { "X", SPR_B_CRO }, { "O", SPR_B_CIR }, { "T", SPR_B_TRI }, { "Q", SPR_B_SQR },
+    { "U", SPR_B_UP }, { "D", SPR_B_DOWN }, { "L", SPR_B_LEFT }, { "R", SPR_B_RIGHT },
+    { "L1", SPR_B_L1 }, { "L2", SPR_B_L2 }, { "R1", SPR_B_R1 }, { "R2", SPR_B_R2 },
+    { "ST", SPR_B_START }, { "SE", SPR_B_SEL }, { "AN", SPR_B_STICK },
+};
+#define ICON_H 20.0f
+static int s_shadow_pass; /* a sombra do texto nao desenha os icones */
+
+/* Se *ps comeca com um token conhecido, avanca e retorna o sprite; senao -1. */
+static int next_token(const char **ps)
+{
+    const char *s = *ps, *e;
+    unsigned i;
+    if (*s != '{') return -1;
+    e = strchr(s, '}');
+    if (!e || e - s > 4) return -1;
+    for (i = 0; i < sizeof(TOKENS) / sizeof(TOKENS[0]); i++)
+        if (strlen(TOKENS[i].name) == (size_t)(e - s - 1) && !strncmp(TOKENS[i].name, s + 1, (size_t)(e - s - 1))) {
+            *ps = e + 1;
+            return TOKENS[i].spr;
+        }
+    return -1;
+}
+
+static float icon_w(int spr) { return (float)SPRITES[spr].w * ICON_H / (float)SPRITES[spr].h; }
+
 static int glyph_index(int cp)
 {
     if (cp < 32 || cp > 255) cp = '?';
@@ -163,8 +191,10 @@ static void glyph(int idx, float x, float y, float sc, Color c)
 
 int gfx_text_width(const char *s)
 {
-    int w = 0, best = 0, cp;
-    while ((cp = next_cp(&s)) != 0) {
+    int w = 0, best = 0, cp, tk;
+    for (;;) {
+        if ((tk = next_token(&s)) >= 0) { w += (int)(icon_w(tk) + 2.5f); continue; }
+        if ((cp = next_cp(&s)) == 0) break;
         if (cp == '\n') { if (w > best) best = w; w = 0; continue; }
         w += font_small_widths[glyph_index(cp)];
     }
@@ -174,9 +204,18 @@ int gfx_text_width(const char *s)
 int gfx_text(float x, float y, const char *s, Color c)
 {
     float x0 = x, maxx = x;
-    int cp;
-    while ((cp = next_cp(&s)) != 0) {
+    int cp, tk;
+    for (;;) {
         int idx;
+        if ((tk = next_token(&s)) >= 0) {
+            float iw = icon_w(tk);
+            if (!s_shadow_pass)
+                plat_sprite(ATLAS_SPRITES, x, y - 1, iw, ICON_H, SPRITES[tk].x, SPRITES[tk].y,
+                            SPRITES[tk].w, SPRITES[tk].h, color_alpha(COL_WHITE, (int)(c & 0xFF)));
+            x += (int)(iw + 2.5f);
+            continue;
+        }
+        if ((cp = next_cp(&s)) == 0) break;
         if (cp == '\n') { if (x > maxx) maxx = x; x = x0; y += 17; continue; }
         idx = glyph_index(cp);
         if (cp != ' ') glyph(idx, x, y, 1.0f, c);
@@ -188,7 +227,9 @@ int gfx_text(float x, float y, const char *s, Color c)
 
 int gfx_text_shadow(float x, float y, const char *s, Color c)
 {
+    s_shadow_pass = 1;
     gfx_text(x + 1, y + 2, s, CRGBA(40, 20, 8, (c & 0xFF) * 3 / 5));
+    s_shadow_pass = 0;
     return gfx_text(x, y, s, c);
 }
 
@@ -355,9 +396,8 @@ void gfx_hintbar(float x, float y, float w, const char *s)
     gfx_rrect(x + 2, y + 3, w, 26, 13, COL_SHADOW);
     gfx_rrect(x, y, w, 26, 13, COL_WOOD_DARK);
     gfx_rrect(x + 2, y + 2, w - 4, 22, 11, CRGB(166, 92, 40));
-    float tw = (float)gfx_text_width(s), tx = x + (w - tw) / 2 + 12;
-    gfx_spr(SPR_DPAD, x + 10, y + 2);
-    if (tx < x + 38) tx = x + 38;
+    float tw = (float)gfx_text_width(s), tx = x + (w - tw) / 2;
+    if (tx < x + 12) tx = x + 12;
     gfx_text_shadow(tx, y + 4, s, CRGB(255, 240, 210));
 }
 
@@ -388,6 +428,16 @@ void gfx_die(float x, float y, float size, int veg, int value, int highlight)
     if (value < 1 || value > 6) return;
     for (i = 0; PIPS[value][i][0] != 99; i++)
         gfx_circle(cx + PIPS[value][i][0] * k, cy + PIPS[value][i][1] * k, pr, pip);
+}
+
+void gfx_dice(float cx, float cy, int veg, int value, int frame, float scale, int alpha)
+{
+    const DiceFrame *f;
+    if (veg < VEG_CARROT || veg > VEG_TOMATO || value < 1 || value > 6) return;
+    if (frame < 0 || frame >= DICE_FRAMES) frame = DICE_STILL;
+    f = &DICE_FR[veg - 1][value - 1][frame];
+    plat_sprite(ATLAS_DICE, cx + f->ox * scale, cy + f->oy * scale, f->w * scale, f->h * scale,
+                f->x, f->y, f->w, f->h, color_alpha(COL_WHITE, alpha));
 }
 
 void gfx_veg(float cx, float cy, float size, int veg, int alpha)

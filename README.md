@@ -4,12 +4,15 @@ Jogo de dados e horta para **PlayStation 2** (homebrew), de 2 a 4 jogadores, hum
 Role os dados, plante cenouras, alfaces e tomates, engorde o seu porco e fique de olho no
 mercado: o preço das verduras muda a cada rodada.
 
-Ao ligar, o jogo pergunta o idioma: **Português** (padrão), **English** ou **Español**. Dá para trocar
+Ao ligar, o jogo mostra a arte de abertura (aperte START ou X) e depois pergunta o idioma: **Português** (padrão), **English** ou **Español**. Dá para trocar
 depois pelo item *Idioma* do menu principal.
 
+![Abertura](docs/00a_abertura.png)
 ![Escolha de idioma](docs/00_idioma.png)
 ![Tela título](docs/01_titulo.png)
+![Dados rolando](docs/03b_rolando.png)
 ![Partida](docs/09_cpu.png)
+![Controles](docs/12b_controles.png)
 ![Fim de jogo](docs/10_fim_de_jogo.png)
 ![Partida em inglês](docs/16_jogo_en.png)
 ![Regras em espanhol](docs/18_reglas_es.png)
@@ -87,16 +90,22 @@ arquivos como artefatos do workflow.
 ### Arte
 
 As folhas em `art/` são recortadas automaticamente por `tools/genassets.py` (remove o fundo branco,
-redimensiona e empacota em dois atlas de 512x512 e 512x128 com paleta de 256 cores). Os atlas
-gerados já estão no repositório; só é preciso rodar o script de novo se a arte mudar:
+redimensiona e empacota em atlas de 8 bits com paleta de 256 cores: sprites 512x512, letras
+512x128, dados 1024x512 e a abertura 640x448). Os atlas gerados já estão no repositório; só é
+preciso rodar o script de novo se a arte mudar:
 
 ```sh
 pip install pillow numpy scipy
 python3 tools/genassets.py
 ```
 
-No console os atlas viram texturas RGBA (filtro bilinear). Uso de VRAM: 2 framebuffers (~2,2 MB) +
-fonte (256 KB) + sprites (1 MB) + letras (256 KB), dentro dos 4 MB do GS.
+No console os atlas viram texturas T8 com CLUT (a paleta é reorganizada no carregamento, como o
+GS espera). Uso de VRAM: 2 framebuffers (~2,2 MB) + fonte 256 KB + sprites 256 KB + letras 64 KB +
+dados 512 KB + abertura 280 KB + paletas ≈ 3,6 MB, dentro dos 4 MB do GS.
+
+Nas dicas da tela e nas regras, os nomes dos botões viram ícones: nos textos de `src/lang.c` basta
+escrever `{X}`, `{O}`, `{T}`, `{Q}`, `{U}`, `{D}`, `{L}`, `{R}`, `{L1}`, `{R1}`, `{L2}`, `{R2}`,
+`{ST}` (START), `{SE}` (SELECT) ou `{AN}` (analógico).
 
 ### Testes no PC
 
@@ -117,6 +126,9 @@ make -f Makefile.host shots   # capturas de tela (.ppm) em build-host/shots/
 | `src/gfx.c` | desenho: texto, dados, verduras, porco, painéis |
 | `src/lang.c` | todos os textos e regras em português, inglês e espanhol |
 | `art/sheet1.png`, `art/sheet2.png` | folhas de arte originais (HUD, mascotes, letras) |
+| `art/splash.png` | arte de abertura (tela inicial, idioma e menu) |
+| `art/buttons.png` | ícones dos botões do controle usados nas dicas e nas regras |
+| `art/dice_*.png` | animação dos dados rolando (laranja, verde, vermelho; 6 valores x 7 quadros) |
 | `tools/genassets.py` | recorta as folhas de arte e gera `assets/*.bin` e `src/sprites.h` |
 | `assets/*.bin`, `src/assets.S` | atlas de sprites embutidos no ELF (`.incbin`) |
 | `src/plat_ps2.c`, `src/main_ps2.c` | PS2: vídeo com gsKit, controles com libpad |

@@ -56,6 +56,8 @@ void gfx_hintbar(float x, float y, float w, const char *s);
 
 void gfx_die(float x, float y, float size, int veg, int value, int highlight);
 void gfx_veg(float cx, float cy, float size, int veg, int alpha);
+/* Dado da arte (cor = verdura). frame 0..4 girando, DICE_STILL parado. Centro em (cx, cy). */
+void gfx_dice(float cx, float cy, int veg, int value, int frame, float scale, int alpha);
 void gfx_pig(float cx, float cy, float size);
 void gfx_ribbon(float cx, float cy, int lit);
 

@@ -18,16 +18,23 @@ enum {
     BTN_START = 1 << 12, BTN_SELECT = 1 << 13
 };
 
-/* Texturas: fonte pequena (alfa), atlas de sprites e letras "bolha" (RGBA, 512x512 e 512x128). */
-enum { ATLAS_FONT = 0, ATLAS_SPRITES = 1, ATLAS_BUBBLE = 2, NUM_ATLAS };
+/* Texturas: fonte pequena (alfa de 4 bits) e atlas de 8 bits com paleta:
+ * sprites 512x512, letras "bolha" 512x128, dados rolando 1024x512, arte de abertura 640x448. */
+enum { ATLAS_FONT = 0, ATLAS_SPRITES, ATLAS_BUBBLE, ATLAS_DICE, ATLAS_SPLASH, NUM_ATLAS };
 #define SPRITES_W 512
 #define SPRITES_H 512
 #define BUBBLE_W 512
 #define BUBBLE_H_TEX 128
+#define DICE_W 1024
+#define DICE_H 512
+#define SPLASH_W 640
+#define SPLASH_H 448
 
-/* Formato dos atlas embutidos: 256 cores RGBA de paleta + indices de 8 bits. */
+/* Formato dos atlas embutidos: 256 cores RGBA de paleta (alfa 0..255) + indices de 8 bits. */
 extern const unsigned char asset_sprites[];
 extern const unsigned char asset_bubble[];
+extern const unsigned char asset_dice[];
+extern const unsigned char asset_splash[];
 
 int  plat_init(void);
 void plat_frame_begin(Color clear);
