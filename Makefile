@@ -2,7 +2,7 @@
 #   make          -> horta_de_dados.elf
 #   make iso      -> horta_de_dados.iso (precisa de mkisofs/genisoimage)
 EE_BIN = horta_de_dados.elf
-EE_OBJS = src/main_ps2.o src/plat_ps2.o src/ui.o src/gfx.o src/ai.o src/game.o src/font_data.o
+EE_OBJS = src/main_ps2.o src/plat_ps2.o src/ui.o src/gfx.o src/ai.o src/game.o src/lang.o src/font_data.o src/assets.o
 EE_INCS = -I$(GSKIT)/include -Isrc
 EE_LDFLAGS = -L$(GSKIT)/lib
 EE_LIBS = -lgskit_toolkit -lgskit -ldmakit -lpad -lpatches -lm

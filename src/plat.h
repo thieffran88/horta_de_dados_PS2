@@ -18,7 +18,16 @@ enum {
     BTN_START = 1 << 12, BTN_SELECT = 1 << 13
 };
 
-enum { ATLAS_SMALL = 0, ATLAS_BIG = 1 };
+/* Texturas: fonte pequena (alfa), atlas de sprites e letras "bolha" (RGBA, 512x512 e 512x128). */
+enum { ATLAS_FONT = 0, ATLAS_SPRITES = 1, ATLAS_BUBBLE = 2, NUM_ATLAS };
+#define SPRITES_W 512
+#define SPRITES_H 512
+#define BUBBLE_W 512
+#define BUBBLE_H_TEX 128
+
+/* Formato dos atlas embutidos: 256 cores RGBA de paleta + indices de 8 bits. */
+extern const unsigned char asset_sprites[];
+extern const unsigned char asset_bubble[];
 
 int  plat_init(void);
 void plat_frame_begin(Color clear);
@@ -28,8 +37,9 @@ unsigned plat_seed(void);
 
 void plat_rect(float x, float y, float w, float h, Color c);
 void plat_tri(float x1, float y1, float x2, float y2, float x3, float y3, Color c);
-/* Desenha uma regiao (u,v,uw,vh) de um atlas de fonte, colorida por c. */
-void plat_glyph(int atlas, float x, float y, float w, float h,
+/* Desenha uma regiao (u,v,uw,vh) de um atlas, modulada pela cor c
+ * (branco = cores originais; na fonte, c e a cor do texto). */
+void plat_sprite(int atlas, float x, float y, float w, float h,
                 float u, float v, float uw, float vh, Color c);
 
 #endif

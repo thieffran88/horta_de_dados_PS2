@@ -4,3 +4,4 @@ iso_root/
 *.o
 *.elf
 *.iso
+assets/preview_*.png

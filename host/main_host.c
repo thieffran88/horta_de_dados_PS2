@@ -50,8 +50,12 @@ static int until(int state, int limit)
 static int run_shots(void)
 {
     int guard;
+    plat_init();
     ui_init(&ui, 7);
     wait(30);
+    shot("00_idioma");
+    press(BTN_CROSS);              /* portugues */
+    wait(5);
     shot("01_titulo");
     press(BTN_CROSS);
     press(BTN_RIGHT);              /* 3 jogadores */
@@ -129,6 +133,44 @@ static int run_shots(void)
     shot("11_regras");
     press(BTN_RIGHT); press(BTN_RIGHT);
     shot("12_regras_plantar");
+
+    /* ingles: escolhe o idioma pelo menu do titulo */
+    press(BTN_CIRCLE);
+    until(ST_TITLE, 10);
+    for (guard = 0; guard < 5 && ui.menu_sel != 2; guard++) press(BTN_DOWN);
+    press(BTN_CROSS);
+    press(BTN_DOWN);
+    shot("13_idioma_en");
+    press(BTN_CROSS);
+    shot("14_titulo_en");
+    press(BTN_CROSS);
+    press(BTN_DOWN); press(BTN_DOWN); press(BTN_DOWN);
+    shot("15_setup_en");
+    for (guard = 0; guard < 10 && ui.setup_sel != ui.setup_players + 2; guard++) press(BTN_DOWN);
+    press(BTN_CROSS);
+    for (guard = 0; guard < 20000 && !(ui.state == ST_PICK && ui.g.round >= 3); guard++) {
+        if (ui.state == ST_PICK) { press(BTN_CROSS); press(BTN_CROSS); }
+        else if (ui.state == ST_PLACE) press(BTN_CROSS);
+        else if (ui.state == ST_ROLL && ui.g.phase == PHASE_ROLL) press(BTN_CROSS);
+        else if (ui.state == ST_MARKET) press(BTN_CROSS);
+        else frame(0, NULL);
+    }
+    wait(60);
+    press(BTN_RIGHT); press(BTN_CROSS);
+    wait(10);
+    shot("16_jogo_en");
+    /* espanhol */
+    press(BTN_START); press(BTN_DOWN); press(BTN_DOWN); press(BTN_CROSS);
+    until(ST_TITLE, 10);
+    for (guard = 0; guard < 5 && ui.menu_sel != 2; guard++) press(BTN_DOWN);
+    press(BTN_CROSS);
+    press(BTN_DOWN);
+    press(BTN_CROSS);
+    shot("17_titulo_es");
+    for (guard = 0; guard < 5 && ui.menu_sel != 1; guard++) press(BTN_DOWN);
+    press(BTN_CROSS);
+    press(BTN_RIGHT); press(BTN_RIGHT); press(BTN_RIGHT);
+    shot("18_reglas_es");
     return 0;
 }
 

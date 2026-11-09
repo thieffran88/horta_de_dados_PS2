@@ -14,10 +14,9 @@
 #include "plat.h"
 
 extern const unsigned char font_small_pixels[];
-extern const unsigned char font_big_pixels[];
 
 static GSGLOBAL *gs;
-static GSTEXTURE tex[2];
+static GSTEXTURE tex[NUM_ATLAS];
 static float yoff;
 
 static char pad_buf[2][256] __attribute__((aligned(64)));
@@ -41,6 +40,18 @@ static u64 gs_tex_color(Color c)
 
 /* ---------------- texturas da fonte ---------------- */
 
+static void init_texture(GSTEXTURE *t, u32 *px, int w, int h, int filter)
+{
+    FlushCache(0);
+    memset(t, 0, sizeof(*t));
+    t->Width = (u32)w;
+    t->Height = (u32)h;
+    t->PSM = GS_PSM_CT32;
+    t->Mem = px;
+    t->Filter = (u32)filter;
+}
+
+/* Fonte: alfa de 4 bits -> branco com alfa (o texto e colorido pela cor do vertice). */
 static void make_font_texture(GSTEXTURE *t, const unsigned char *packed, int w, int h)
 {
     int i, n = w * h;
@@ -50,13 +61,23 @@ static void make_font_texture(GSTEXTURE *t, const unsigned char *packed, int w, 
         u32 a = (u32)(a4 * 128 / 15);
         px[i] = 0x00FFFFFFu | (a << 24);
     }
-    FlushCache(0);
-    memset(t, 0, sizeof(*t));
-    t->Width = (u32)w;
-    t->Height = (u32)h;
-    t->PSM = GS_PSM_CT32;
-    t->Mem = px;
-    t->Filter = GS_FILTER_NEAREST;
+    init_texture(t, px, w, h, GS_FILTER_NEAREST);
+}
+
+/* Atlas de sprites: paleta RGBA de 256 cores + indices -> CT32 (alfa do GS: 0x80 = opaco). */
+static void make_rgba_texture(GSTEXTURE *t, const unsigned char *bin, int w, int h)
+{
+    int i, n = w * h;
+    const unsigned char *pal = bin, *idx = bin + 1024;
+    u32 lut[256];
+    u32 *px = (u32 *)memalign(128, (size_t)n * 4);
+    for (i = 0; i < 256; i++) {
+        const unsigned char *c = pal + i * 4;
+        u32 a = ((u32)c[3] + 1) >> 1;
+        lut[i] = (u32)c[0] | ((u32)c[1] << 8) | ((u32)c[2] << 16) | (a << 24);
+    }
+    for (i = 0; i < n; i++) px[i] = lut[idx[i]];
+    init_texture(t, px, w, h, GS_FILTER_LINEAR);
 }
 
 /* ---------------- controles ---------------- */
@@ -154,8 +175,10 @@ int plat_init(void)
     /* layout feito para 640x448 (NTSC); no PAL (512 linhas) centraliza. */
     yoff = gs->Height > SCREEN_H ? (float)((gs->Height - SCREEN_H) / 2) : 0.0f;
 
-    make_font_texture(&tex[ATLAS_SMALL], font_small_pixels, 256, 256);
-    make_font_texture(&tex[ATLAS_BIG], font_big_pixels, 512, 256);
+    /* VRAM: 2 framebuffers (~2,2 MB) + fonte 256 KB + sprites 1 MB + letras 256 KB < 4 MB */
+    make_font_texture(&tex[ATLAS_FONT], font_small_pixels, 256, 256);
+    make_rgba_texture(&tex[ATLAS_SPRITES], asset_sprites, SPRITES_W, SPRITES_H);
+    make_rgba_texture(&tex[ATLAS_BUBBLE], asset_bubble, BUBBLE_W, BUBBLE_H_TEX);
     return 0;
 }
 
@@ -183,10 +206,10 @@ void plat_tri(float x1, float y1, float x2, float y2, float x3, float y3, Color 
     gsKit_prim_triangle(gs, x1, y1 + yoff, x2, y2 + yoff, x3, y3 + yoff, 0, gs_color(c));
 }
 
-void plat_glyph(int atlas, float x, float y, float w, float h,
-                float u, float v, float uw, float vh, Color c)
+void plat_sprite(int atlas, float x, float y, float w, float h,
+                 float u, float v, float uw, float vh, Color c)
 {
-    GSTEXTURE *t = &tex[atlas ? 1 : 0];
+    GSTEXTURE *t = &tex[(atlas >= 0 && atlas < NUM_ATLAS) ? atlas : 0];
     if ((c & 0xFF) == 0) return;
     gsKit_TexManager_bind(gs, t);
     gsKit_prim_sprite_texture(gs, t, x, y + yoff, u, v, x + w, y + h + yoff, u + uw, v + vh, 0, gs_tex_color(c));

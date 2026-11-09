@@ -4,9 +4,15 @@ Jogo de dados e horta para **PlayStation 2** (homebrew), de 2 a 4 jogadores, hum
 Role os dados, plante cenouras, alfaces e tomates, engorde o seu porco e fique de olho no
 mercado: o preço das verduras muda a cada rodada.
 
+Ao ligar, o jogo pergunta o idioma: **Português** (padrão), **English** ou **Español**. Dá para trocar
+depois pelo item *Idioma* do menu principal.
+
+![Escolha de idioma](docs/00_idioma.png)
 ![Tela título](docs/01_titulo.png)
 ![Partida](docs/09_cpu.png)
 ![Fim de jogo](docs/10_fim_de_jogo.png)
+![Partida em inglês](docs/16_jogo_en.png)
+![Regras em espanhol](docs/18_reglas_es.png)
 
 > As capturas acima saem do renderizador de testes no PC (`make -f Makefile.host shots`), que
 > desenha o mesmo código de interface do jogo.
@@ -78,6 +84,20 @@ Isso gera `horta_de_dados.elf`. `make iso` gera uma ISO (precisa de `mkisofs`/`g
 O GitHub Actions (`.github/workflows/build.yml`) compila o ELF e a ISO a cada push e deixa os
 arquivos como artefatos do workflow.
 
+### Arte
+
+As folhas em `art/` são recortadas automaticamente por `tools/genassets.py` (remove o fundo branco,
+redimensiona e empacota em dois atlas de 512x512 e 512x128 com paleta de 256 cores). Os atlas
+gerados já estão no repositório; só é preciso rodar o script de novo se a arte mudar:
+
+```sh
+pip install pillow numpy scipy
+python3 tools/genassets.py
+```
+
+No console os atlas viram texturas RGBA (filtro bilinear). Uso de VRAM: 2 framebuffers (~2,2 MB) +
+fonte (256 KB) + sprites (1 MB) + letras (256 KB), dentro dos 4 MB do GS.
+
 ### Testes no PC
 
 O motor de regras e a interface são C puro, separados da camada do PS2, então rodam no PC:
@@ -95,15 +115,20 @@ make -f Makefile.host shots   # capturas de tela (.ppm) em build-host/shots/
 | `src/ai.c` | jogadores CPU (Fácil e Normal) |
 | `src/ui.c` | telas, menus, fluxo da partida |
 | `src/gfx.c` | desenho: texto, dados, verduras, porco, painéis |
-| `src/texts.h` | textos das regras (português) |
+| `src/lang.c` | todos os textos e regras em português, inglês e espanhol |
+| `art/sheet1.png`, `art/sheet2.png` | folhas de arte originais (HUD, mascotes, letras) |
+| `tools/genassets.py` | recorta as folhas de arte e gera `assets/*.bin` e `src/sprites.h` |
+| `assets/*.bin`, `src/assets.S` | atlas de sprites embutidos no ELF (`.incbin`) |
 | `src/plat_ps2.c`, `src/main_ps2.c` | PS2: vídeo com gsKit, controles com libpad |
-| `src/font_data.c` | fonte gerada por `tools/genfont.py` (DejaVu Sans Bold) |
+| `src/font_data.c` | fonte do texto pequeno, gerada por `tools/genfont.py` (DejaVu Sans Bold) |
 | `host/` | plataforma de testes no PC (renderizador por software) |
 | `tests/test_rules.c` | testes das regras |
 
 ## Créditos
 
 - Regras adaptadas do jogo de tabuleiro *Harvest Dice* (design de Danny Devine, Grey Fox Games).
-  Este é um projeto de fã, sem afiliação; nome, arte e textos do jogo são próprios.
+  Este é um projeto de fã, sem afiliação; nome e textos do jogo são próprios.
+- Arte da HUD, mascotes e letras: folhas fornecidas pelo autor do projeto (`art/`). O logotipo
+  "Harvest Dice" que aparece nas folhas não é usado no jogo; o título é montado com as letras.
 - Fonte: DejaVu Sans Bold (licença Bitstream Vera/DejaVu).
 - Feito com PS2SDK e gsKit (ps2dev).

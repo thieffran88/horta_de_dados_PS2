@@ -5,7 +5,7 @@
 
 enum {
     ST_TITLE = 0, ST_SETUP, ST_RULES, ST_ROLL, ST_PICK, ST_PLACE, ST_CPU,
-    ST_MARKET, ST_GAMEOVER, ST_PAUSE
+    ST_MARKET, ST_GAMEOVER, ST_PAUSE, ST_LANG
 };
 
 typedef struct {
@@ -21,6 +21,7 @@ typedef struct {
     int setup_adv;
     int rules_page;
     int pause_sel;
+    int lang_sel;
 
     /* turno */
     int pick_sel;

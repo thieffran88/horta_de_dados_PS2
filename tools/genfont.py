@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 """Gera src/font_data.c a partir de uma fonte TrueType (padrao: DejaVu Sans Bold).
 
-Dois atlas de alfa de 4 bits por pixel:
-  - pequeno: Latin-1 (32..255), celulas 16x18, atlas 256x256
-  - grande : ASCII  (32..127),  celulas 32x40, atlas 512x256
+Atlas de alfa de 4 bits por pixel: Latin-1 (32..255), celulas 16x18, atlas 256x256.
+(Os titulos usam as letras "bolha" de art/, ver tools/genassets.py.)
 Uso: python3 tools/genfont.py [arquivo.ttf]
 """
 import sys
@@ -43,6 +42,5 @@ def build(name, size, cw, ch, aw, ah, first, last):
 
 src = ["/* Gerado por tools/genfont.py - nao edite. Glifos: DejaVu Sans Bold (licenca Bitstream Vera / DejaVu). */\n"]
 src.append(build("font_small", 14, 16, 18, 256, 256, 32, 255))
-src.append(build("font_big", 30, 32, 40, 512, 256, 32, 127))
 open("src/font_data.c", "w").write("".join(src))
 print("ok")

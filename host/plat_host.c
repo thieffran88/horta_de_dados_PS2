@@ -6,7 +6,19 @@
 #include "../src/plat.h"
 
 extern const unsigned char font_small_pixels[];
-extern const unsigned char font_big_pixels[];
+
+/* atlas RGBA expandidos a partir da paleta */
+static unsigned char *atlas_rgba[NUM_ATLAS];
+static int atlas_w[NUM_ATLAS] = { 256, SPRITES_W, BUBBLE_W };
+
+static unsigned char *expand(const unsigned char *bin, int w, int h)
+{
+    unsigned char *out = malloc((size_t)w * h * 4);
+    const unsigned char *pal = bin, *idx = bin + 1024;
+    int i;
+    for (i = 0; i < w * h; i++) memcpy(out + i * 4, pal + idx[i] * 4, 4);
+    return out;
+}
 
 static unsigned char fb[SCREEN_H][SCREEN_W][3];
 static unsigned host_buttons;
@@ -16,7 +28,14 @@ int host_ntri, host_nrect, host_nglyph;
 void host_set_buttons(unsigned b) { host_buttons = b; }
 void host_request_shot(const char *path) { shot_path = path; }
 
-int plat_init(void) { return 0; }
+int plat_init(void)
+{
+    if (!atlas_rgba[ATLAS_SPRITES]) {
+        atlas_rgba[ATLAS_SPRITES] = expand(asset_sprites, SPRITES_W, SPRITES_H);
+        atlas_rgba[ATLAS_BUBBLE] = expand(asset_bubble, BUBBLE_W, BUBBLE_H_TEX);
+    }
+    return 0;
+}
 unsigned plat_buttons(void) { return host_buttons; }
 unsigned plat_seed(void) { return 20261109u; }
 
@@ -97,19 +116,71 @@ void plat_tri(float x1, float y1, float x2, float y2, float x3, float y3, Color 
         }
 }
 
-void plat_glyph(int atlas, float x, float y, float w, float h,
-                float u, float v, float uw, float vh, Color c)
+static void blend_rgb(int x, int y, int r, int g, int b, int a)
 {
-    const unsigned char *px = atlas == ATLAS_BIG ? font_big_pixels : font_small_pixels;
-    int aw = atlas == ATLAS_BIG ? 512 : 256;
+    unsigned char *p;
+    if (x < 0 || y < 0 || x >= SCREEN_W || y >= SCREEN_H || a <= 0) return;
+    p = fb[y][x];
+    p[0] = (unsigned char)((r * a + p[0] * (255 - a)) / 255);
+    p[1] = (unsigned char)((g * a + p[1] * (255 - a)) / 255);
+    p[2] = (unsigned char)((b * a + p[2] * (255 - a)) / 255);
+}
+
+/* amostragem bilinear (como GS_FILTER_LINEAR), limitada ao retangulo de origem */
+static void sample(int atlas, float u, float v, float u0, float v0, float u1, float v1, float out[4])
+{
+    const unsigned char *t = atlas_rgba[atlas];
+    int W = atlas_w[atlas], k, i;
+    float fu, fv;
+    int x0, y0;
+    u -= 0.5f; v -= 0.5f;
+    if (u < u0) u = u0;
+    if (v < v0) v = v0;
+    if (u > u1 - 1) u = u1 - 1;
+    if (v > v1 - 1) v = v1 - 1;
+    x0 = (int)u; y0 = (int)v;
+    fu = u - x0; fv = v - y0;
+    for (k = 0; k < 4; k++) out[k] = 0;
+    for (i = 0; i < 4; i++) {
+        int xx = x0 + (i & 1), yy = y0 + (i >> 1);
+        float wgt = ((i & 1) ? fu : 1 - fu) * ((i >> 1) ? fv : 1 - fv);
+        const unsigned char *px;
+        if (xx >= (int)u1) xx = (int)u1 - 1;
+        if (yy >= (int)v1) yy = (int)v1 - 1;
+        px = t + ((size_t)yy * W + xx) * 4;
+        /* pre-multiplicado para nao "sangrar" a cor de pixels transparentes */
+        out[0] += px[0] * px[3] / 255.0f * wgt;
+        out[1] += px[1] * px[3] / 255.0f * wgt;
+        out[2] += px[2] * px[3] / 255.0f * wgt;
+        out[3] += px[3] * wgt;
+    }
+}
+
+void plat_sprite(int atlas, float x, float y, float w, float h,
+                 float u, float v, float uw, float vh, Color c)
+{
     int x0 = (int)(x + 0.5f), y0 = (int)(y + 0.5f), i, j;
-    int dw = (int)(w + 0.5f), dh = (int)(h + 0.5f);
+    int x1 = (int)(x + w + 0.5f), y1 = (int)(y + h + 0.5f);
     host_nglyph++;
-    for (j = 0; j < dh; j++)
-        for (i = 0; i < dw; i++) {
-            int tu = (int)(u + (float)i * uw / w), tv = (int)(v + (float)j * vh / h);
-            int idx = tv * aw + tu;
-            int a4 = (px[idx >> 1] >> ((idx & 1) * 4)) & 15;
-            if (a4) blend(x0 + i, y0 + j, c, a4 * 17);
+    if (atlas == ATLAS_FONT) {
+        for (j = y0; j < y1; j++)
+            for (i = x0; i < x1; i++) {
+                int tu = (int)(u + ((float)i + 0.5f - x) * uw / w), tv = (int)(v + ((float)j + 0.5f - y) * vh / h);
+                int idx = tv * 256 + tu;
+                int a4 = (font_small_pixels[idx >> 1] >> ((idx & 1) * 4)) & 15;
+                if (a4) blend(i, j, c, a4 * 17);
+            }
+        return;
+    }
+    for (j = y0; j < y1; j++)
+        for (i = x0; i < x1; i++) {
+            float s[4], a;
+            sample(atlas, u + ((float)i + 0.5f - x) * uw / w, v + ((float)j + 0.5f - y) * vh / h,
+                   u, v, u + uw, v + vh, s);
+            a = s[3] * (float)(c & 0xFF) / 255.0f;
+            if (a < 1.0f || s[3] <= 0) continue;
+            blend_rgb(i, j, (int)(s[0] / s[3] * 255.0f * ((c >> 24) & 0xFF) / 255.0f),
+                      (int)(s[1] / s[3] * 255.0f * ((c >> 16) & 0xFF) / 255.0f),
+                      (int)(s[2] / s[3] * 255.0f * ((c >> 8) & 0xFF) / 255.0f), (int)a);
         }
 }
